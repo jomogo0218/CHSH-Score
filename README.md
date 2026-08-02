@@ -1,0 +1,61 @@
+# 校園環境無名小站（CHSH-Score）
+
+全校 32 班智慧校園環境評分與照片紀錄系統 — 無名小站風格（相簿／網誌／留言）。
+
+遠端倉庫：[jomogo0218/CHSH-Score](https://github.com/jomogo0218/CHSH-Score)
+
+## 規劃文件（接手必讀）
+
+| 文件 | 說明 |
+|---|---|
+| [`docs/deployment-plan.md`](docs/deployment-plan.md) | 完整部署規劃書（架構、成本、MQTT、Roadmap、SOP） |
+| [`docs/cloud-setup.md`](docs/cloud-setup.md) | R2／Firebase／EMQX 申請步驟 |
+
+## 第 1 週交付（雲端與基礎建設）
+
+- Next.js App Router + TypeScript + Tailwind
+- Firestore 型別、`firestore.rules`（公開讀／組長 `admin` 寫）
+- 32 班名冊常數 + 5 班 demo seed
+- 路由殼層：大廳 `/`、班級 `/classes/[classId]`、看板 `/board`、巡檢 `/inspect`、登入 `/login`
+- R2 上傳 stub：`POST /api/upload-r2`
+- MQTT topic／client 抽象（第 3 週才連真實 EMQX）
+- 雲端申請步驟：[`docs/cloud-setup.md`](docs/cloud-setup.md)
+
+## 本機啟動
+
+```bash
+cp .env.example .env.local
+npm install
+npm run dev
+```
+
+開啟 [http://localhost:3000](http://localhost:3000)。未填雲端金鑰時仍可用 demo 資料預覽 UI。
+
+## 環境變數
+
+見 [`.env.example`](.env.example)。重點：
+
+| 變數 | 用途 |
+|---|---|
+| `NEXT_PUBLIC_FIREBASE_*` | Auth + Firestore |
+| `R2_*` / `NEXT_PUBLIC_CF_R2_PUBLIC_URL` | Cloudflare R2 |
+| `NEXT_PUBLIC_MQTT_*` / `MQTT_ADMIN_*` | EMQX Cloud |
+
+## 權限模型（本週）
+
+- 全校可讀班級／巡檢／留言
+- 僅 Firestore `users/{uid}.role == "admin"` 可寫入
+- 留言銷案寫入預留於 rules 註解，第 2／4 週啟用
+
+## Roadmap
+
+| 週次 | 內容 |
+|---|---|
+| 1（目前） | 雲端說明、骨架、模型、Rules、路由殼層、R2／MQTT stub |
+| 2 | 組長評分／壓縮上傳 PWA；介面綁真實資料 |
+| 3 | MQTT 即時廣播；選配 ESP32 門鈕 |
+| 4 | 實測、銷案演練、QR Code 上線 |
+
+## 技術棧
+
+Vercel · Firebase Auth/Firestore · Cloudflare R2 · EMQX Cloud · Next.js

@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // 以 users/{uid}.role == 'admin' 判定組長（本週建議方式，方便本機測）
+    function isAdmin() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // 預留：同班衛生股長／導師（第 2／4 週啟用留言寫入時使用）
+    function isClassMember(classId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.class_id == classId;
+    }
+
+    function isHealthOfficerOrTeacher() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['class_health_officer', 'teacher'];
+    }
+
+    // 全校公開唯讀；寫入僅組長
+    match /classes/{classId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /inspections/{inspectionId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /inspection_items/{itemId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;
+      // 本週：僅 admin 可寫。之後可改為：
+      // allow create: if isAdmin() || isHealthOfficerOrTeacher();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      // 本人可建立／更新自己的 profile，但不可自行把 role 改成 admin
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role != 'admin';
+      allow update: if isAdmin()
+        || (signedIn()
+            && request.auth.uid == uid
+            && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+  }
+}

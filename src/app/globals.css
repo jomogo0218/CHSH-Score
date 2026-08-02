@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+:root {
+  --background: #e6efea;
+  --foreground: #1a2e28;
+  --paper: #f4faf6;
+  --panel: #f4faf6;
+  --ink: #1a2e28;
+  --ink-muted: #5a7268;
+  --muted: #5a7268;
+  --mint: #2a6b58;
+  --leaf: #3d8f72;
+  --accent: #2a6b58;
+  --accent-strong: #1f4d40;
+  --accent-soft: #c5e0d4;
+  --sun: #d9922f;
+  --coral: #c45a42;
+  --warn: #c45a42;
+  --line: #c5d6cc;
+  --border: #c5d6cc;
+  --banner-from: #1f4d40;
+  --banner-to: #3a7a62;
+  --shadow-soft: 0 10px 28px rgba(26, 46, 40, 0.08);
+  --font-display: var(--font-rounded), "M PLUS Rounded 1c", sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-mint: var(--mint);
+  --color-leaf: var(--leaf);
+  --color-sun: var(--sun);
+  --color-coral: var(--coral);
+  --color-line: var(--line);
+  --font-sans: var(--font-noto), "Noto Sans TC", sans-serif;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(61, 143, 114, 0.18), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(217, 146, 47, 0.12), transparent 50%),
+    linear-gradient(180deg, #dfeae4 0%, var(--background) 40%, #d8e6df 100%);
+  color: var(--foreground);
+  font-family: var(--font-noto), "Noto Sans TC", sans-serif;
+  min-height: 100vh;
+}
+
+.site-shell {
+  margin-inline: auto;
+  width: min(72rem, calc(100% - 2rem));
+}
+
+.panel {
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  box-shadow: var(--shadow-soft);
+}
+
+.status-pass {
+  background: color-mix(in srgb, var(--leaf) 18%, white);
+  color: var(--mint);
+}
+
+.status-pending_fix {
+  background: color-mix(in srgb, var(--coral) 16%, white);
+  color: var(--coral);
+}
+
+.status-fixed {
+  background: color-mix(in srgb, var(--sun) 18%, white);
+  color: #9a6a14;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-rise {
+  animation: rise-in 0.55s ease-out both;
+}
+
+.animate-rise-delay-1 {
+  animation: rise-in 0.55s ease-out 0.08s both;
+}
+
+.animate-rise-delay-2 {
+  animation: rise-in 0.55s ease-out 0.16s both;
+}
+
+.live-dot {
+  animation: soft-pulse 1.6s ease-in-out infinite;
+}
