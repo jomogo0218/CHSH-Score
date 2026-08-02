@@ -3,6 +3,7 @@ import Link from "next/link";
 const links = [
   { href: "/", label: "校園大廳" },
   { href: "/board", label: "川堂看板" },
+  { href: "/qr", label: "QR 推廣" },
   { href: "/inspect", label: "組長評分" },
   { href: "/login", label: "登入" },
 ];

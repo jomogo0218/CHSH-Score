@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AlbumGrid } from "@/components/AlbumGrid";
 import { BlogList } from "@/components/BlogList";
 import { ClassBanner } from "@/components/ClassBanner";
+import { ClassQrPanel } from "@/components/ClassQrPanel";
 import { Guestbook } from "@/components/Guestbook";
 import { FETCH_TTL_MS, withTtlCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
@@ -156,6 +157,7 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
           { id: "albums", label: "相簿" },
           { id: "blogs", label: "網誌" },
           { id: "guestbook", label: "留言板" },
+          { id: "qr", label: "QR" },
         ].map((tab) => (
           <a
             key={tab.id}
@@ -193,6 +195,10 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
           classId={classId}
           inspections={inspections}
         />
+      </section>
+
+      <section id="qr" className="panel scroll-mt-24 p-5 sm:p-6">
+        <ClassQrPanel classId={classId} className={classDoc.class_name} />
       </section>
     </div>
   );
