@@ -19,17 +19,15 @@ export function QrPromoClient() {
   }, [grade]);
 
   return (
-    <div className="space-y-6">
-      <header className="animate-rise space-y-2">
-        <p className="text-sm tracking-widest text-muted">QR PROMOTE</p>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-mint">
-          班級 QR（給導師／同學）
+    <div className="space-y-3 sm:space-y-4">
+      <header className="animate-rise space-y-1">
+        <h1 className="font-[family-name:var(--font-display)] text-xl font-bold text-mint sm:text-2xl">
+          班級 QR
         </h1>
-        <p className="max-w-2xl text-muted">
-          列印貼在教室：掃碼看巡察照片；清掃後可在班級頁「改善回報」上傳完成證明。組長可用巡察 QR
-          快速開上傳頁。
+        <p className="text-sm text-muted">
+          貼教室：掃碼看照片／回報。組長 QR 可直接開上傳頁。
         </p>
-        <p className="text-sm">
+        <p className="text-xs">
           <Link href="/" className="text-mint underline">
             回大廳
           </Link>

@@ -103,6 +103,12 @@ export function Guestbook({
     setBusy(true);
     setMessage(null);
     try {
+      const auth = getFirebaseAuth();
+      if (isFirebaseConfigured() && !auth?.currentUser) {
+        setMessage("請先登入（導師／衛生股長帳號）再送出改善回報與照片。");
+        return;
+      }
+
       let replyPhotoUrl: string | undefined;
       if (photoFile) {
         const uploaded = await uploadInspectionPhoto(photoFile, {
@@ -112,16 +118,19 @@ export function Guestbook({
         replyPhotoUrl = uploaded.photoUrl;
       }
 
-      const auth = getFirebaseAuth();
       let role = authorRole;
       let name = authorName.trim();
 
       if (isFirebaseConfigured() && auth?.currentUser) {
         const profile = await fetchUserProfile(auth.currentUser.uid);
-        if (profile) {
-          role = profile.role;
-          name = name || profile.display_name;
+        if (!profile) {
+          setMessage(
+            "找不到 users 權限文件。請請組長在 Firestore 建立對應帳號（role、class_id）。",
+          );
+          return;
         }
+        role = profile.role;
+        name = name || profile.display_name;
         name = name || auth.currentUser.email || "已登入使用者";
 
         const saved = await postComment({
@@ -136,7 +145,7 @@ export function Guestbook({
         setComments((prev) => [saved, ...prev]);
         setMessage(
           markFixed
-            ? "已送出留言並將巡檢標為已銷案（請確認 Console 已更新 firestore.rules）"
+            ? "已送出留言並將巡檢標為已銷案"
             : "已送出留言",
         );
       } else {
@@ -179,7 +188,7 @@ export function Guestbook({
       >
         <h3 className="font-semibold text-ink">清掃完成回報</h3>
         <p className="text-xs text-muted">
-          導師／衛生股長看完巡察照片後，上傳改善照並說明已清掃。勾選銷案後狀態會改為「已銷案」。未登入時先存本機預覽。
+          請先登入對應班級的導師／衛生股長帳號，再上傳改善照並銷案。身分與班級由組長在 Firestore 設定，不可自填竄改。
         </p>
 
         <label className="block space-y-1 text-sm">

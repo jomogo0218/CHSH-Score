@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import mqtt from "mqtt";
+import {
+  AuthRequiredError,
+  requireFirebaseUserIfConfigured,
+} from "@/lib/firebase/verify-id-token";
 import { getAdminPublisherConfig } from "@/lib/mqtt/client";
 
 /**
- * 伺服器端以 admin_inspector 發布 MQTT（瀏覽器不持有管理員密碼）。
- * 未設定 MQTT_ADMIN_* 時回傳 stub，不中斷評分流程。
+ * 伺服器端以 admin_inspector 發布 MQTT。
+ * Firebase 已設定時必須登入；未設定 MQTT 時回 stub。
  */
 export async function POST(request: NextRequest) {
   try {
+    await requireFirebaseUserIfConfigured(request);
+
     const body = (await request.json()) as {
       topics?: string[];
       topic?: string;
@@ -21,6 +27,19 @@ export async function POST(request: NextRequest) {
         { error: "需要 topics 與 payload" },
         { status: 400 },
       );
+    }
+
+    // 僅允許學校 live_feed／班級 channel，避免被當開放 relay
+    for (const topic of topics) {
+      if (
+        topic !== "school/clean/live_feed" &&
+        !/^school\/clean\/class\/[A-Za-z0-9_-]+$/.test(topic)
+      ) {
+        return NextResponse.json(
+          { error: `不允許的 topic：${topic}` },
+          { status: 400 },
+        );
+      }
     }
 
     const payload =
@@ -71,6 +90,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, stub: false, topics });
   } catch (err) {
+    if (err instanceof AuthRequiredError) {
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    }
     console.error("[mqtt-publish]", err);
     return NextResponse.json(
       {

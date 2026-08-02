@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #e6efea;
+  --background: #e8f0eb;
   --foreground: #1a2e28;
-  --paper: #f4faf6;
-  --panel: #f4faf6;
+  --paper: #f7fbf8;
+  --panel: #f7fbf8;
   --ink: #1a2e28;
   --ink-muted: #5a7268;
   --muted: #5a7268;
@@ -20,7 +20,7 @@
   --border: #c5d6cc;
   --banner-from: #1f4d40;
   --banner-to: #3a7a62;
-  --shadow-soft: 0 10px 28px rgba(26, 46, 40, 0.08);
+  --shadow-soft: 0 4px 14px rgba(26, 46, 40, 0.06);
   --font-display: var(--font-rounded), "M PLUS Rounded 1c", sans-serif;
 }
 
@@ -40,9 +40,7 @@
 
 body {
   background:
-    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(61, 143, 114, 0.18), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(217, 146, 47, 0.12), transparent 50%),
-    linear-gradient(180deg, #dfeae4 0%, var(--background) 40%, #d8e6df 100%);
+    linear-gradient(180deg, #dde9e2 0%, var(--background) 28%, #e4eee8 100%);
   color: var(--foreground);
   font-family: var(--font-noto), "Noto Sans TC", sans-serif;
   min-height: 100vh;
@@ -50,13 +48,19 @@ body {
 
 .site-shell {
   margin-inline: auto;
-  width: min(72rem, calc(100% - 2rem));
+  width: min(40rem, calc(100% - 1.25rem));
+}
+
+@media (min-width: 640px) {
+  .site-shell {
+    width: min(56rem, calc(100% - 2rem));
+  }
 }
 
 .panel {
-  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: 1rem;
-  background: color-mix(in srgb, var(--panel) 92%, white);
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--panel) 96%, white);
   box-shadow: var(--shadow-soft);
 }
 
@@ -78,7 +82,7 @@ body {
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -97,15 +101,15 @@ body {
 }
 
 .animate-rise {
-  animation: rise-in 0.55s ease-out both;
+  animation: rise-in 0.4s ease-out both;
 }
 
 .animate-rise-delay-1 {
-  animation: rise-in 0.55s ease-out 0.08s both;
+  animation: rise-in 0.4s ease-out 0.06s both;
 }
 
 .animate-rise-delay-2 {
-  animation: rise-in 0.55s ease-out 0.16s both;
+  animation: rise-in 0.4s ease-out 0.12s both;
 }
 
 .live-dot {

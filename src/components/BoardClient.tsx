@@ -40,7 +40,10 @@ function liveToInspection(payload: LiveFeedPayload): InspectionDoc {
 }
 
 export function BoardClient() {
-  const [items, setItems] = useState<InspectionDoc[]>(getLatestFeed());
+  const firebaseOn = isFirebaseConfigured();
+  const [items, setItems] = useState<InspectionDoc[]>(() =>
+    firebaseOn ? [] : getLatestFeed(),
+  );
 
   useLiveFeedSubscription((payload) => {
     const doc = liveToInspection(payload);
@@ -57,7 +60,8 @@ export function BoardClient() {
     async function load() {
       const local = getLocalInspections();
       let remote: InspectionDoc[] = [];
-      if (isFirebaseConfigured()) {
+      const configured = isFirebaseConfigured();
+      if (configured) {
         try {
           const result = await withTtlCache(
             "board:latest",
@@ -66,11 +70,12 @@ export function BoardClient() {
           );
           remote = result.data;
         } catch {
-          // keep demo
+          // keep local
         }
       }
       if (cancelled) return;
-      setItems(mergeFeed(remote, local, getLatestFeed()));
+      const demo = configured ? [] : getLatestFeed();
+      setItems(mergeFeed(remote, local, demo));
     }
 
     void load();

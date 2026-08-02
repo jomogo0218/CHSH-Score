@@ -17,7 +17,7 @@ export function AlbumGrid({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {inspections.map((insp) => {
         const items = itemsByInspection[insp.inspection_id] ?? [];
         const photos =
@@ -34,19 +34,19 @@ export function AlbumGrid({
               ];
 
         return (
-          <article key={insp.inspection_id} className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-ink">
-                {insp.date.replaceAll("-", "/")} 衛生巡檢相簿
+          <article key={insp.inspection_id} className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-[family-name:var(--font-display)] text-base font-bold text-ink">
+                {insp.date.replaceAll("-", "/")}
               </h3>
               <StatusBadge status={insp.status} />
               <span className="text-sm text-mint">{insp.total_score} 分</span>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {photos.map((item) => (
                 <figure
                   key={item.item_id}
-                  className="overflow-hidden rounded-xl border border-line bg-paper/90"
+                  className="overflow-hidden rounded-lg border border-line bg-paper/90"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -54,9 +54,9 @@ export function AlbumGrid({
                     alt={item.note}
                     className="aspect-[4/3] w-full object-cover"
                   />
-                  <figcaption className="space-y-1 p-2.5 text-xs">
+                  <figcaption className="space-y-0.5 p-2 text-[11px]">
                     <p className="font-semibold text-ink">{item.category}</p>
-                    <p className="text-muted">{item.note}</p>
+                    <p className="line-clamp-2 text-muted">{item.note}</p>
                     {item.score_deduction < 0 ? (
                       <p className="font-medium text-coral">
                         {item.score_deduction} 分

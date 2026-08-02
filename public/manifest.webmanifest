@@ -1,10 +1,10 @@
 {
-  "name": "校園環境無名小站",
+  "name": "嘉華體衛組環境評分",
   "short_name": "環境評分",
-  "description": "全校 32 班智慧校園環境評分與照片紀錄系統",
+  "description": "嘉華體衛組環境評分：巡察佐證、改善回報、評分輔助",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#e6efea",
+  "background_color": "#e8f0eb",
   "theme_color": "#2a6b58",
   "lang": "zh-Hant",
   "icons": [

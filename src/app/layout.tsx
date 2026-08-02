@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { M_PLUS_Rounded_1c, Noto_Sans_TC } from "next/font/google";
 import { PwaRegister } from "@/components/PwaRegister";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SITE_NAME, SITE_SHORT_NAME, SITE_TAGLINE } from "@/lib/constants";
 import "./globals.css";
 
 const display = M_PLUS_Rounded_1c({
@@ -19,13 +20,13 @@ const body = Noto_Sans_TC({
 });
 
 export const metadata: Metadata = {
-  title: "校園環境無名小站",
-  description: "全校 32 班智慧校園環境評分與照片紀錄系統",
-  applicationName: "校園環境無名小站",
+  title: SITE_NAME,
+  description: `${SITE_NAME}：${SITE_TAGLINE}`,
+  applicationName: SITE_NAME,
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "環境評分",
+    title: SITE_SHORT_NAME,
     statusBarStyle: "default",
   },
   icons: {
@@ -54,9 +55,9 @@ export default function RootLayout({
       <body className="min-h-full antialiased">
         <PwaRegister />
         <SiteHeader />
-        <main className="site-shell py-6 sm:py-8">{children}</main>
-        <footer className="site-shell pb-10 pt-2 text-center text-xs text-muted">
-          校園智慧環境評分系統 · 第 2 週評分上傳 · 可加入主畫面使用
+        <main className="site-shell py-3 sm:py-5">{children}</main>
+        <footer className="site-shell pb-6 pt-1 text-center text-[11px] text-muted">
+          {SITE_NAME} · 可加入主畫面使用
         </footer>
       </body>
     </html>

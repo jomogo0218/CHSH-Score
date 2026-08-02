@@ -1,5 +1,9 @@
 import type { InspectionStatus, UserRole } from "@/lib/types";
 
+export const SITE_NAME = "嘉華體衛組環境評分";
+export const SITE_SHORT_NAME = "環境評分";
+export const SITE_TAGLINE = "巡察佐證 · 改善回報 · 評分輔助";
+
 /** 高中 32 班名冊：高一 11、高二 11、高三 10 */
 export const CLASS_ROSTER: ReadonlyArray<{
   class_id: string;

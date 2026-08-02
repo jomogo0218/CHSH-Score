@@ -1,7 +1,9 @@
 /**
  * Cloudflare R2 上傳抽象。
- * 本週為 stub；第 2 週接 S3 相容 API + 前端壓縮。
  */
+
+import { getFirebaseAuth } from "@/lib/firebase/client";
+import { taiwanDateString } from "@/lib/time/taiwan";
 
 export interface UploadResult {
   photoUrl: string;
@@ -18,21 +20,36 @@ export async function uploadInspectionPhoto(
   if (options?.classId) formData.append("classId", options.classId);
   if (options?.prefix) formData.append("prefix", options.prefix);
 
+  const headers: HeadersInit = {};
+  const auth = getFirebaseAuth();
+  const user = auth?.currentUser;
+  if (user) {
+    headers.Authorization = `Bearer ${await user.getIdToken()}`;
+  }
+
   const res = await fetch("/api/upload-r2", {
     method: "POST",
     body: formData,
+    headers,
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || "上傳失敗");
+    let message = text || "上傳失敗";
+    try {
+      const json = JSON.parse(text) as { error?: string };
+      if (json.error) message = json.error;
+    } catch {
+      // keep text
+    }
+    throw new Error(message);
   }
 
   return (await res.json()) as UploadResult;
 }
 
 export function buildObjectKey(classId: string, filename = "photo.jpg") {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const date = taiwanDateString().replace(/-/g, "");
   const safe = filename.replace(/[^\w.\-]+/g, "_");
   return `inspections/${date}/${classId}/${Date.now()}_${safe}`;
 }

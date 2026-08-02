@@ -82,13 +82,11 @@ export function LoginForm() {
   return (
     <div className="mx-auto max-w-md space-y-4">
       <SetupStatusBanner />
-      <form onSubmit={onSubmit} className="panel space-y-4 p-6">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
+      <form onSubmit={onSubmit} className="panel space-y-3 p-4">
+        <h1 className="font-[family-name:var(--font-display)] text-xl font-bold text-mint">
           組長登入
         </h1>
-        <p className="text-sm text-muted">
-          登入後可上傳巡察照片。請按下方綠色「登入」按鈕（只輸入密碼不會送出）。
-        </p>
+        <p className="text-sm text-muted">登入後可上傳巡察照片。</p>
         <p className={`rounded-lg px-3 py-2 text-xs ${configured ? "bg-leaf/15 text-mint" : "bg-coral/10 text-coral"}`}>
           Firebase 前端設定：{configured ? "已偵測到" : "未偵測到（需重新部署／重整）"}
         </p>

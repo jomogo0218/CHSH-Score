@@ -126,12 +126,12 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
   }, [classId]);
 
   return (
-    <div className="space-y-6">
-      <p className="text-sm text-muted">
+    <div className="space-y-3 sm:space-y-4">
+      <p className="text-xs text-muted">
         <Link href="/" className="hover:text-mint">
-          校園大廳
+          大廳
         </Link>
-        <span className="mx-2">/</span>
+        <span className="mx-1.5">/</span>
         {classDoc.class_name}
       </p>
 
@@ -147,25 +147,25 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
         </p>
       ) : null}
 
-      <nav className="flex flex-wrap gap-2 text-sm">
+      <nav className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
         {[
-          { id: "albums", label: "巡察照片" },
-          { id: "blogs", label: "巡察說明" },
-          { id: "guestbook", label: "改善回報" },
+          { id: "albums", label: "照片" },
+          { id: "blogs", label: "說明" },
+          { id: "guestbook", label: "回報" },
           { id: "qr", label: "QR" },
         ].map((tab) => (
           <a
             key={tab.id}
             href={`#${tab.id}`}
-            className="rounded-lg border border-line bg-paper px-3 py-1.5 hover:bg-leaf/15"
+            className="rounded-md border border-line bg-paper px-2.5 py-1 hover:bg-leaf/15"
           >
             {tab.label}
           </a>
         ))}
       </nav>
 
-      <section id="albums" className="panel scroll-mt-24 p-5 sm:p-6">
-        <h2 className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
+      <section id="albums" className="panel scroll-mt-20 p-3 sm:p-4">
+        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
           巡察照片
         </h2>
         <AlbumGrid
@@ -174,15 +174,15 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
         />
       </section>
 
-      <section id="blogs" className="panel scroll-mt-24 p-5 sm:p-6">
-        <h2 className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
+      <section id="blogs" className="panel scroll-mt-20 p-3 sm:p-4">
+        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
           巡察說明
         </h2>
         <BlogList inspections={inspections} />
       </section>
 
-      <section id="guestbook" className="panel scroll-mt-24 p-5 sm:p-6">
-        <h2 className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
+      <section id="guestbook" className="panel scroll-mt-20 p-3 sm:p-4">
+        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
           改善回報
         </h2>
         <Guestbook
@@ -192,7 +192,7 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
         />
       </section>
 
-      <section id="qr" className="panel scroll-mt-24 p-5 sm:p-6">
+      <section id="qr" className="panel scroll-mt-20 p-3 sm:p-4">
         <ClassQrPanel classId={classId} className={classDoc.class_name} />
       </section>
     </div>

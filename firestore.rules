@@ -54,19 +54,23 @@ service cloud.firestore {
       allow create: if canCloseCase(request.resource.data.class_id)
         && request.resource.data.keys().hasAll([
           'inspection_id', 'class_id', 'author_role', 'author_name', 'content', 'created_at'
-        ]);
+        ])
+        // 身分欄位必須與 users/{uid} 一致，防止自稱組長／亂填班級
+        && request.resource.data.author_role == userDoc().role
+        && (isAdmin() || request.resource.data.class_id == userDoc().class_id);
       allow update, delete: if isAdmin();
     }
 
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if signedIn()
-        && request.auth.uid == uid
-        && request.resource.data.role != 'admin';
+      // 禁止自建身分；請由 admin（或 Console）建立 users 文件
+      allow create: if isAdmin();
+      // 一般使用者最多只能改顯示名稱，不能改 role／class_id
       allow update: if isAdmin()
         || (signedIn()
             && request.auth.uid == uid
-            && request.resource.data.role == resource.data.role);
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['display_name']));
       allow delete: if isAdmin();
     }
   }

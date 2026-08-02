@@ -20,24 +20,34 @@ import {
 import { saveLocalInspection } from "@/lib/local/store";
 import { publishLiveUpdate } from "@/lib/mqtt/publish";
 import { uploadInspectionPhoto } from "@/lib/r2/upload";
+import { taiwanDateString } from "@/lib/time/taiwan";
 import type { InspectionDoc, InspectionStatus, UserDoc } from "@/lib/types";
 import type { User } from "firebase/auth";
+
+type PhotoEntry = {
+  id: string;
+  url: string;
+  originalBytes: number;
+  compressedBytes: number;
+};
 
 type CategoryState = {
   category: string;
   flagged: boolean;
   deduction: number;
   note: string;
-  photoUrl?: string;
-  previewUrl?: string;
-  originalBytes?: number;
-  compressedBytes?: number;
+  photos: PhotoEntry[];
 };
 
 const DEFAULT_DEDUCTION = 5;
+const MAX_PHOTOS_PER_CATEGORY = 15;
 
 function todayId(classId: string) {
-  return `${new Date().toISOString().slice(0, 10)}_${classId}`;
+  return `${taiwanDateString()}_${classId}`;
+}
+
+function newPhotoId() {
+  return `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function InspectForm({ classId }: { classId?: string }) {
@@ -56,6 +66,7 @@ export function InspectForm({ classId }: { classId?: string }) {
       flagged: false,
       deduction: DEFAULT_DEDUCTION,
       note: "",
+      photos: [],
     })),
   );
 
@@ -86,7 +97,7 @@ export function InspectForm({ classId }: { classId?: string }) {
     return Math.max(0, 100 - deduction);
   }, [categories]);
 
-  const photoCount = categories.filter((c) => c.photoUrl).length;
+  const photoCount = categories.reduce((sum, c) => sum + c.photos.length, 0);
 
   function toggleCategory(category: string) {
     setCategories((prev) =>
@@ -102,26 +113,58 @@ export function InspectForm({ classId }: { classId?: string }) {
     );
   }
 
-  async function onPickPhoto(file: File | undefined) {
-    if (!file || !activeCategory || !classId) return;
+  function removePhoto(category: string, photoId: string) {
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.category === category
+          ? { ...c, photos: c.photos.filter((p) => p.id !== photoId) }
+          : c,
+      ),
+    );
+  }
+
+  async function onPickPhotos(fileList: FileList | null) {
+    if (!fileList?.length || !activeCategory || !classId) return;
+    const cat = categories.find((c) => c.category === activeCategory);
+    if (!cat) return;
+
+    const room = MAX_PHOTOS_PER_CATEGORY - cat.photos.length;
+    if (room <= 0) {
+      setMessage(`${activeCategory} 最多 ${MAX_PHOTOS_PER_CATEGORY} 張。`);
+      setActiveCategory(null);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+
+    const files = [...fileList].slice(0, room);
     setBusy(true);
     setMessage(null);
+    const added: PhotoEntry[] = [];
     try {
-      const originalBytes = file.size;
-      const compressed = await compressInspectionPhoto(file);
-      const uploaded = await uploadInspectionPhoto(compressed, { classId });
-      updateCategory(activeCategory, {
-        flagged: true,
-        photoUrl: uploaded.photoUrl,
-        previewUrl: uploaded.photoUrl,
-        note:
-          categories.find((c) => c.category === activeCategory)?.note ||
-          `${activeCategory}巡察佐證`,
-        originalBytes,
-        compressedBytes: compressed.size,
-      });
+      for (const file of files) {
+        const originalBytes = file.size;
+        const compressed = await compressInspectionPhoto(file);
+        const uploaded = await uploadInspectionPhoto(compressed, { classId });
+        added.push({
+          id: newPhotoId(),
+          url: uploaded.photoUrl,
+          originalBytes,
+          compressedBytes: compressed.size,
+        });
+      }
+      setCategories((prev) =>
+        prev.map((c) => {
+          if (c.category !== activeCategory) return c;
+          return {
+            ...c,
+            // 只加照片，不自動標記缺失／扣分
+            photos: [...c.photos, ...added],
+            note: c.note || (added.length ? `${c.category}巡察佐證` : c.note),
+          };
+        }),
+      );
       setMessage(
-        `${activeCategory} 照片已就緒（${formatBytes(originalBytes)} → ${formatBytes(compressed.size)}${uploaded.stub ? "，stub" : "，已上 R2"}）。請再按下方「發布到班級相簿」。`,
+        `${activeCategory} 已加 ${added.length} 張（共 ${(cat.photos.length + added.length)} 張）。需扣分時請再按「標記缺失」。`,
       );
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "上傳失敗");
@@ -160,10 +203,10 @@ export function InspectForm({ classId }: { classId?: string }) {
     setMessage("正在寫入班級相簿…");
     try {
       const flagged = categories.filter((c) => c.flagged);
-      const withPhotos = categories.filter((c) => c.photoUrl);
+      const withPhotos = categories.filter((c) => c.photos.length > 0);
       const cover =
-        withPhotos[0]?.photoUrl ??
-        flagged.find((c) => c.photoUrl)?.photoUrl;
+        withPhotos[0]?.photos[0]?.url ??
+        flagged.find((c) => c.photos[0])?.photos[0]?.url;
       const summaryBlog =
         summary.trim() ||
         (flagged.length || withPhotos.length
@@ -172,7 +215,10 @@ export function InspectForm({ classId }: { classId?: string }) {
                 (c, i, arr) =>
                   arr.findIndex((x) => x.category === c.category) === i,
               )
-              .map((c) => `${c.category}${c.note ? `：${c.note}` : ""}`)
+              .map((c) => {
+                const tag = c.flagged ? "待改善" : "佐證";
+                return `${c.category}（${tag}${c.photos.length ? ` ${c.photos.length} 張` : ""}${c.note ? `：${c.note}` : ""}）`;
+              })
               .join("；")
           : "各區整潔，維持良好。");
 
@@ -181,7 +227,7 @@ export function InspectForm({ classId }: { classId?: string }) {
         category: c.category,
         score_deduction: c.flagged ? -Math.abs(c.deduction) : 0,
         note: c.note,
-        photo_url: c.photoUrl,
+        photo_urls: c.photos.map((p) => p.url),
       }));
 
       let inspection: InspectionDoc;
@@ -202,7 +248,7 @@ export function InspectForm({ classId }: { classId?: string }) {
           deduction > 0 ? "pending_fix" : "pass";
         inspection = {
           inspection_id: todayId(classId),
-          date: new Date().toISOString().slice(0, 10),
+          date: taiwanDateString(),
           class_id: classId,
           inspector_id: inspectorId,
           total_score: Math.max(0, 100 - deduction),
@@ -211,19 +257,35 @@ export function InspectForm({ classId }: { classId?: string }) {
           cover_photo_url: cover,
           created_at: new Date().toISOString(),
         };
-        saveLocalInspection(
-          inspection,
-          payloadCats
-            .filter((c) => c.score_deduction < 0 || c.photo_url || c.note)
-            .map((c) => ({
-              inspection_id: inspection.inspection_id,
-              category: c.category,
-              score_deduction: c.score_deduction,
-              note: c.note,
-              photo_url: c.photo_url ?? "",
-              photo_timestamp: new Date().toTimeString().slice(0, 8),
-            })),
-        );
+        const stamp = new Date().toTimeString().slice(0, 8);
+        const localItems = payloadCats.flatMap((c) => {
+          const urls = c.photo_urls ?? [];
+          if (c.score_deduction === 0 && urls.length === 0 && !c.note) return [];
+          if (urls.length === 0) {
+            return [
+              {
+                inspection_id: inspection.inspection_id,
+                category: c.category,
+                score_deduction: c.score_deduction,
+                note: c.note,
+                photo_url: "",
+                photo_timestamp: stamp,
+              },
+            ];
+          }
+          return urls.map((url, i) => ({
+            inspection_id: inspection.inspection_id,
+            category: c.category,
+            score_deduction: i === 0 ? c.score_deduction : 0,
+            note:
+              urls.length > 1
+                ? `${c.note || c.category}（${i + 1}/${urls.length}）`
+                : c.note,
+            photo_url: url,
+            photo_timestamp: stamp,
+          }));
+        });
+        saveLocalInspection(inspection, localItems);
       }
 
       invalidateCache(`class:${classId}`);
@@ -243,9 +305,13 @@ export function InspectForm({ classId }: { classId?: string }) {
         // MQTT optional
       }
 
+      const statusHint =
+        inspection.status === "pass"
+          ? "狀態為合格（僅佐證、未扣分），班級可先改善。"
+          : "狀態為待改善。";
       setMessage(
         wroteCloud
-          ? `已發布到雲端：${selected.class_name} ${inspection.total_score} 分。請打開班級相簿查看（可強制重整）。`
+          ? `已發布到雲端：${selected.class_name} ${inspection.total_score} 分。${statusHint}`
           : `僅存本機：${selected.class_name}。導師在其他裝置看不到，請先登入再發布。`,
       );
     } catch (err) {
@@ -266,21 +332,19 @@ export function InspectForm({ classId }: { classId?: string }) {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="panel p-5 sm:p-6">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-mint">
+    <div className="space-y-3 sm:space-y-4">
+      <section className="panel p-3 sm:p-4">
+        <h1 className="font-[family-name:var(--font-display)] text-xl font-bold text-mint sm:text-2xl">
           巡察拍照與評分
         </h1>
-        <p className="mt-2 text-muted">
-          流程：選班 → 拍照 → 按「發布到班級相簿」。只拍照不發布，班級頁不會出現。
+        <p className="mt-1 text-sm text-muted">
+          選班 → 各項目可加多張照片（不扣分）→ 需要時再「標記缺失」→ 發布。
         </p>
         <p
-          className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+          className={`mt-2 rounded-lg px-2.5 py-1.5 text-xs sm:text-sm ${
             user && isAdmin
               ? "bg-leaf/15 text-mint"
-              : user
-                ? "bg-coral/10 text-coral"
-                : "bg-coral/10 text-coral"
+              : "bg-coral/10 text-coral"
           }`}
         >
           {!user ? (
@@ -311,27 +375,30 @@ export function InspectForm({ classId }: { classId?: string }) {
           )}
         </p>
         {selected ? (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-leaf/15 px-4 py-3">
-            <p className="font-semibold text-ink">
-              目前班級：{selected.class_name}（{selected.class_id}）
+          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-leaf/15 px-3 py-2">
+            <p className="text-sm font-semibold text-ink">
+              {selected.class_name}（{selected.class_id}）
+              <span className="ml-2 font-normal text-muted">
+                照片 {photoCount} 張
+              </span>
             </p>
-            <p className="font-[family-name:var(--font-display)] text-3xl font-bold text-mint">
+            <p className="font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
               {totalScore}
             </p>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-muted">請先選擇班級再評分。</p>
+          <p className="mt-2 text-sm text-muted">請先選擇班級再評分。</p>
         )}
       </section>
 
-      <section className="panel p-5 sm:p-6">
-        <h2 className="mb-3 font-semibold text-ink">選擇班級</h2>
-        <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
+      <section className="panel p-3 sm:p-4">
+        <h2 className="mb-2 text-sm font-semibold text-ink">選擇班級</h2>
+        <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
           {CLASS_ROSTER.map((c) => (
             <Link
               key={c.class_id}
               href={`/inspect/${c.class_id}`}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+              className={`rounded-md border px-2.5 py-1 text-xs transition sm:text-sm ${
                 c.class_id === classId
                   ? "border-mint bg-mint text-white"
                   : "border-line bg-paper hover:bg-leaf/15"
@@ -345,57 +412,57 @@ export function InspectForm({ classId }: { classId?: string }) {
 
       {classId ? (
         <>
-          <section className="panel p-5 sm:p-6">
-            <h2 className="mb-3 font-semibold text-ink">評分細項</h2>
-            <ul className="grid gap-3">
+          <section className="panel p-3 sm:p-4">
+            <h2 className="mb-2 text-sm font-semibold text-ink">評分細項</h2>
+            <ul className="grid gap-2">
               {categories.map((cat) => (
                 <li
                   key={cat.category}
-                  className={`rounded-xl border p-4 ${
+                  className={`rounded-lg border p-2.5 ${
                     cat.flagged
                       ? "border-coral/40 bg-coral/5"
                       : "border-line bg-paper/80"
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleCategory(cat.category)}
-                      className="font-semibold text-ink"
-                    >
+                    <div className="text-sm font-semibold text-ink">
                       {cat.category}{" "}
-                      <span className="text-sm font-normal text-muted">
-                        {cat.flagged ? `扣 ${cat.deduction} 分` : "滿分"}
+                      <span className="text-xs font-normal text-muted">
+                        {cat.flagged
+                          ? `扣 ${cat.deduction}`
+                          : cat.photos.length
+                            ? `佐證 ${cat.photos.length} 張`
+                            : "滿分"}
                       </span>
-                    </button>
-                    <div className="flex gap-2">
+                    </div>
+                    <div className="flex gap-1.5">
                       <button
                         type="button"
-                        disabled={busy}
+                        disabled={busy || cat.photos.length >= MAX_PHOTOS_PER_CATEGORY}
                         onClick={() => {
                           setActiveCategory(cat.category);
                           fileRef.current?.click();
                         }}
-                        className="rounded-lg border border-line bg-white px-3 py-1.5 text-sm hover:border-mint"
+                        className="rounded-md border border-line bg-white px-2.5 py-1 text-xs hover:border-mint disabled:opacity-50 sm:text-sm"
                       >
-                        拍照
+                        加照片
                       </button>
                       <button
                         type="button"
                         onClick={() => toggleCategory(cat.category)}
-                        className={`rounded-lg px-3 py-1.5 text-sm ${
+                        className={`rounded-md px-2.5 py-1 text-xs sm:text-sm ${
                           cat.flagged
                             ? "bg-coral text-white"
                             : "bg-mint/10 text-mint"
                         }`}
                       >
-                        {cat.flagged ? "已標記缺失" : "標記缺失"}
+                        {cat.flagged ? "已標記扣分" : "標記缺失"}
                       </button>
                     </div>
                   </div>
                   {cat.flagged ? (
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[120px_1fr]">
-                      <label className="text-sm text-muted">
+                    <div className="mt-2 grid gap-2 sm:grid-cols-[100px_1fr]">
+                      <label className="text-xs text-muted">
                         扣分
                         <input
                           type="number"
@@ -407,10 +474,10 @@ export function InspectForm({ classId }: { classId?: string }) {
                               deduction: Number(e.target.value) || 1,
                             })
                           }
-                          className="mt-1 w-full rounded-lg border border-line px-2 py-1.5"
+                          className="mt-1 w-full rounded-md border border-line px-2 py-1"
                         />
                       </label>
-                      <label className="text-sm text-muted">
+                      <label className="text-xs text-muted">
                         備註
                         <input
                           type="text"
@@ -421,24 +488,52 @@ export function InspectForm({ classId }: { classId?: string }) {
                             })
                           }
                           placeholder="例如：排水孔有落葉積水"
-                          className="mt-1 w-full rounded-lg border border-line px-2 py-1.5"
+                          className="mt-1 w-full rounded-md border border-line px-2 py-1"
                         />
                       </label>
                     </div>
+                  ) : cat.photos.length > 0 ? (
+                    <label className="mt-2 block text-xs text-muted">
+                      備註（選填）
+                      <input
+                        type="text"
+                        value={cat.note}
+                        onChange={(e) =>
+                          updateCategory(cat.category, {
+                            note: e.target.value,
+                          })
+                        }
+                        placeholder="給班級看的說明，不會扣分"
+                        className="mt-1 w-full rounded-md border border-line px-2 py-1"
+                      />
+                    </label>
                   ) : null}
-                  {cat.previewUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={cat.previewUrl}
-                      alt={cat.category}
-                      className="mt-3 max-h-40 rounded-lg object-cover"
-                    />
-                  ) : null}
-                  {cat.compressedBytes != null && cat.originalBytes != null ? (
-                    <p className="mt-2 text-xs text-muted">
-                      壓縮：{formatBytes(cat.originalBytes)} →{" "}
-                      {formatBytes(cat.compressedBytes)}
-                    </p>
+                  {cat.photos.length > 0 ? (
+                    <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                      {cat.photos.map((p) => (
+                        <div key={p.id} className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={p.url}
+                            alt=""
+                            className="aspect-square w-full rounded-md object-cover"
+                          />
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => removePhoto(cat.category, p.id)}
+                            className="absolute right-1 top-1 rounded bg-black/60 px-1.5 text-[10px] text-white"
+                            aria-label="移除照片"
+                          >
+                            ×
+                          </button>
+                          <p className="mt-0.5 truncate text-[10px] text-muted">
+                            {formatBytes(p.originalBytes)}→
+                            {formatBytes(p.compressedBytes)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   ) : null}
                 </li>
               ))}
@@ -447,40 +542,40 @@ export function InspectForm({ classId }: { classId?: string }) {
               ref={fileRef}
               type="file"
               accept="image/*"
-              capture="environment"
+              multiple
               className="hidden"
-              onChange={(e) => onPickPhoto(e.target.files?.[0])}
+              onChange={(e) => onPickPhotos(e.target.files)}
             />
           </section>
 
-          <section className="panel p-5 sm:p-6">
-            <h2 className="mb-3 font-semibold text-ink">環境網誌</h2>
+          <section className="panel p-3 sm:p-4">
+            <h2 className="mb-2 text-sm font-semibold text-ink">環境說明</h2>
             <textarea
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
-              rows={3}
-              placeholder="走廊整體整潔，但洗手台有積水…"
-              className="w-full rounded-xl border border-line bg-paper px-3 py-2 outline-none ring-mint focus:ring-2"
+              rows={2}
+              placeholder="可先只放照片給班級改善，稍後再標記扣分…"
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none ring-mint focus:ring-2"
             />
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 disabled={busy}
                 onClick={onPublish}
-                className="rounded-xl bg-mint px-5 py-2.5 font-semibold text-white transition hover:bg-leaf disabled:opacity-50"
+                className="rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-white transition hover:bg-leaf disabled:opacity-50"
               >
                 {busy ? "處理中…" : "發布到班級相簿"}
               </button>
               <Link
                 href={`/classes/${classId}`}
-                className="rounded-xl border border-line px-5 py-2.5 font-semibold text-ink hover:bg-leaf/10"
+                className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:bg-leaf/10"
               >
                 查看班級相簿
               </Link>
             </div>
             {message ? (
               <p
-                className={`mt-4 rounded-lg px-3 py-2 text-sm ${
+                className={`mt-3 rounded-lg px-3 py-2 text-sm ${
                   message.includes("雲端") || message.includes("已發布到")
                     ? "bg-leaf/15 text-mint"
                     : message.includes("尚未登入") || message.includes("權限")

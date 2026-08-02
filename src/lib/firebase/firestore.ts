@@ -10,10 +10,12 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
   type DocumentData,
 } from "firebase/firestore";
 import { invalidateCache } from "@/lib/cache/ttl";
 import { getFirestoreDb, isFirebaseConfigured } from "@/lib/firebase/client";
+import { taiwanDateString } from "@/lib/time/taiwan";
 import type {
   ClassDoc,
   CommentDoc,
@@ -138,7 +140,8 @@ export interface PublishInspectionInput {
     category: string;
     score_deduction: number;
     note: string;
-    photo_url?: string;
+    /** 同一項目可多張；發布時拆成多筆 inspection_items */
+    photo_urls?: string[];
   }>;
   coverPhotoUrl?: string;
 }
@@ -150,7 +153,7 @@ export async function publishInspection(
     throw new Error("Firebase 尚未設定");
   }
   const db = requireDb();
-  const date = new Date().toISOString().slice(0, 10);
+  const date = taiwanDateString();
   const inspectionId = `${date}_${input.classId}`;
   const deduction = input.categories.reduce(
     (sum, c) => sum + Math.abs(Math.min(0, c.score_deduction)),
@@ -175,16 +178,49 @@ export async function publishInspection(
 
   await setDoc(doc(db, "inspections", inspectionId), inspection);
 
+  // 同日重發時清掉舊細項，避免照片重複堆疊
+  const existingItems = await getDocs(
+    query(
+      collection(db, "inspection_items"),
+      where("inspection_id", "==", inspectionId),
+    ),
+  );
+  if (!existingItems.empty) {
+    const batch = writeBatch(db);
+    existingItems.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+
+  const stamp = new Date().toTimeString().slice(0, 8);
   for (const cat of input.categories) {
-    if (cat.score_deduction === 0 && !cat.photo_url && !cat.note) continue;
-    await addDoc(collection(db, "inspection_items"), {
-      inspection_id: inspectionId,
-      category: cat.category,
-      score_deduction: cat.score_deduction,
-      note: cat.note,
-      photo_url: cat.photo_url ?? "",
-      photo_timestamp: new Date().toTimeString().slice(0, 8),
-    });
+    const urls = (cat.photo_urls ?? []).filter(Boolean);
+    if (cat.score_deduction === 0 && urls.length === 0 && !cat.note) continue;
+
+    if (urls.length === 0) {
+      await addDoc(collection(db, "inspection_items"), {
+        inspection_id: inspectionId,
+        category: cat.category,
+        score_deduction: cat.score_deduction,
+        note: cat.note,
+        photo_url: "",
+        photo_timestamp: stamp,
+      });
+      continue;
+    }
+
+    for (let i = 0; i < urls.length; i++) {
+      const multi = urls.length > 1;
+      await addDoc(collection(db, "inspection_items"), {
+        inspection_id: inspectionId,
+        category: cat.category,
+        score_deduction: i === 0 ? cat.score_deduction : 0,
+        note: multi
+          ? `${cat.note || cat.category}（${i + 1}/${urls.length}）`
+          : cat.note,
+        photo_url: urls[i],
+        photo_timestamp: stamp,
+      });
+    }
   }
 
   invalidateCache(`class:${input.classId}`);

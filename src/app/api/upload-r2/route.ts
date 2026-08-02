@@ -1,18 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  AuthRequiredError,
+  requireFirebaseUserIfConfigured,
+} from "@/lib/firebase/verify-id-token";
 import { buildObjectKey } from "@/lib/r2/upload";
 import { hasR2Credentials, putR2Object } from "@/lib/r2/server";
 
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024; // 前端已壓到約 300KB；API 硬上限 2MB
+const ALLOWED_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
+
 /**
- * 上傳照片至 Cloudflare R2（有憑證時真實寫入；否則回傳 placeholder stub）。
+ * 上傳照片至 Cloudflare R2。
+ * Firebase 已設定時必須帶 Authorization: Bearer <idToken>。
  */
 export async function POST(request: NextRequest) {
   try {
+    await requireFirebaseUserIfConfigured(request);
+
     const form = await request.formData();
     const file = form.get("file");
-    const classId = String(form.get("classId") ?? "unknown");
+    const classId = String(form.get("classId") ?? "unknown").slice(0, 32);
 
     if (!file || !(file instanceof Blob)) {
       return NextResponse.json({ error: "缺少 file" }, { status: 400 });
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json(
+        { error: `檔案過大（上限 ${MAX_UPLOAD_BYTES / 1024 / 1024}MB）` },
+        { status: 400 },
+      );
+    }
+
+    const contentType = file.type || "image/jpeg";
+    if (contentType && !ALLOWED_TYPES.has(contentType) && !contentType.startsWith("image/")) {
+      return NextResponse.json({ error: "僅允許圖片檔" }, { status: 400 });
     }
 
     const filename =
@@ -22,7 +51,6 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_CF_R2_PUBLIC_URL?.replace(/\/$/, "") ??
       "https://placeholder.r2.dev";
     const bytes = file.size;
-    const contentType = file.type || "image/jpeg";
     const buffer = Buffer.from(await file.arrayBuffer());
 
     if (hasR2Credentials()) {
@@ -36,7 +64,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 無憑證：以 data URL 回傳，方便本機預覽（勿用於正式環境大量上傳）
     const dataUrl = `data:${contentType};base64,${buffer.toString("base64")}`;
     return NextResponse.json({
       photoUrl: dataUrl,
@@ -47,6 +74,9 @@ export async function POST(request: NextRequest) {
         "未設定 R2 憑證：回傳 data URL 供本機預覽。請依 docs/cloud-setup.md 設定後即可寫入 R2。",
     });
   } catch (err) {
+    if (err instanceof AuthRequiredError) {
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    }
     console.error("[upload-r2]", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "上傳失敗" },
