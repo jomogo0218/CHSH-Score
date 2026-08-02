@@ -11,15 +11,22 @@
 | [`docs/deployment-plan.md`](docs/deployment-plan.md) | 完整部署規劃書（架構、成本、MQTT、Roadmap、SOP） |
 | [`docs/cloud-setup.md`](docs/cloud-setup.md) | R2／Firebase／EMQX 申請步驟 |
 
-## 第 1 週交付（雲端與基礎建設）
+## 第 1～2 週交付
 
+### 第 1 週：雲端與基礎建設
 - Next.js App Router + TypeScript + Tailwind
 - Firestore 型別、`firestore.rules`（公開讀／組長 `admin` 寫）
 - 32 班名冊常數 + 5 班 demo seed
-- 路由殼層：大廳 `/`、班級 `/classes/[classId]`、看板 `/board`、巡檢 `/inspect`、登入 `/login`
-- R2 上傳 stub：`POST /api/upload-r2`
+- 路由殼層：大廳、班級、看板、巡檢、登入
 - MQTT topic／client 抽象（第 3 週才連真實 EMQX）
 - 雲端申請步驟：[`docs/cloud-setup.md`](docs/cloud-setup.md)
+
+### 第 2 週：評分／壓縮上傳／PWA
+- 組長評分表單：區域扣分、相機拍照、網誌、發布
+- 前端 `browser-image-compression`（≤300KB）
+- `/api/upload-r2`：有 R2 憑證則真實上傳，否則 data URL 本機預覽
+- 已登入 Firebase 時寫入 Firestore；否則存 localStorage 供大廳／班級預覽
+- PWA：`manifest.webmanifest` + Service Worker（可加入主畫面）
 
 ## 本機啟動
 

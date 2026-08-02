@@ -1,26 +1,29 @@
 import {
+  addDoc,
   collection,
   doc,
   getDoc,
   getDocs,
+  limit,
+  orderBy,
   query,
+  setDoc,
   where,
   type DocumentData,
 } from "firebase/firestore";
-import { getFirestoreDb } from "@/lib/firebase/client";
+import { getFirestoreDb, isFirebaseConfigured } from "@/lib/firebase/client";
 import type {
   ClassDoc,
   CommentDoc,
   InspectionDoc,
   InspectionItemDoc,
+  InspectionStatus,
   UserDoc,
 } from "@/lib/types";
 
 function requireDb() {
   const db = getFirestoreDb();
-  if (!db) {
-    throw new Error("Firestore 尚未設定");
-  }
+  if (!db) throw new Error("Firestore 尚未設定");
   return db;
 }
 
@@ -40,9 +43,32 @@ export async function fetchInspectionsByClass(
     where("class_id", "==", classId),
   );
   const snap = await getDocs(q);
-  return snap.docs.map(
-    (d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc,
-  );
+  return snap.docs
+    .map((d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export async function fetchLatestInspections(
+  max = 20,
+): Promise<InspectionDoc[]> {
+  const db = requireDb();
+  try {
+    const q = query(
+      collection(db, "inspections"),
+      orderBy("created_at", "desc"),
+      limit(max),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(
+      (d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc,
+    );
+  } catch {
+    const snap = await getDocs(collection(db, "inspections"));
+    return snap.docs
+      .map((d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .slice(0, max);
+  }
 }
 
 export async function fetchInspectionItems(
@@ -83,4 +109,64 @@ export async function fetchUserProfile(uid: string): Promise<UserDoc | null> {
 export async function isAdminUser(uid: string): Promise<boolean> {
   const profile = await fetchUserProfile(uid);
   return profile?.role === "admin";
+}
+
+export interface PublishInspectionInput {
+  classId: string;
+  inspectorId: string;
+  summaryBlog: string;
+  categories: Array<{
+    category: string;
+    score_deduction: number;
+    note: string;
+    photo_url?: string;
+  }>;
+  coverPhotoUrl?: string;
+}
+
+export async function publishInspection(
+  input: PublishInspectionInput,
+): Promise<InspectionDoc> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase 尚未設定");
+  }
+  const db = requireDb();
+  const date = new Date().toISOString().slice(0, 10);
+  const inspectionId = `${date}_${input.classId}`;
+  const deduction = input.categories.reduce(
+    (sum, c) => sum + Math.abs(Math.min(0, c.score_deduction)),
+    0,
+  );
+  const totalScore = Math.max(0, 100 - deduction);
+  const hasDeduction = deduction > 0;
+  const status: InspectionStatus = hasDeduction ? "pending_fix" : "pass";
+  const createdAt = new Date().toISOString();
+
+  const inspection: InspectionDoc = {
+    inspection_id: inspectionId,
+    date,
+    class_id: input.classId,
+    inspector_id: input.inspectorId,
+    total_score: totalScore,
+    summary_blog: input.summaryBlog,
+    status,
+    cover_photo_url: input.coverPhotoUrl,
+    created_at: createdAt,
+  };
+
+  await setDoc(doc(db, "inspections", inspectionId), inspection);
+
+  for (const cat of input.categories) {
+    if (cat.score_deduction === 0 && !cat.photo_url && !cat.note) continue;
+    await addDoc(collection(db, "inspection_items"), {
+      inspection_id: inspectionId,
+      category: cat.category,
+      score_deduction: cat.score_deduction,
+      note: cat.note,
+      photo_url: cat.photo_url ?? "",
+      photo_timestamp: new Date().toTimeString().slice(0, 8),
+    });
+  }
+
+  return inspection;
 }

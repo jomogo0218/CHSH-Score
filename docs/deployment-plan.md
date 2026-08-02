@@ -126,8 +126,8 @@
 
 | 週次 | 內容 |
 |---|---|
-| **第 1 週（已完成骨架）** | 申請／接線說明 R2、Firebase、EMQX；Next.js 骨架；資料模型；Rules；路由殼層；R2／MQTT stub |
-| **第 2 週** | 組長評分／拍照／壓縮上傳 PWA；無名小站介面綁真實資料 |
+| **第 1 週（已完成）** | 申請／接線說明 R2、Firebase、EMQX；Next.js 骨架；資料模型；Rules；路由殼層；R2／MQTT stub |
+| **第 2 週（已完成）** | 組長評分／拍照／壓縮上傳 PWA；大廳／班級綁 Firestore＋本機 fallback |
 | **第 3 週** | MQTT WebSocket 即時廣播；選配 ESP32 按鈕與校園 Wi-Fi 測試 |
 | **第 4 週** | 3 班實測、銷案演練、QR Code 推廣上線 |
 

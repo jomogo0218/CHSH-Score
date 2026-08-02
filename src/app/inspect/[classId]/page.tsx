@@ -1,4 +1,4 @@
-import { InspectShell } from "@/components/InspectShell";
+import { InspectForm } from "@/components/InspectForm";
 
 export default async function InspectClassPage({
   params,
@@ -6,5 +6,5 @@ export default async function InspectClassPage({
   params: Promise<{ classId: string }>;
 }) {
   const { classId } = await params;
-  return <InspectShell classId={classId} />;
+  return <InspectForm classId={classId} />;
 }

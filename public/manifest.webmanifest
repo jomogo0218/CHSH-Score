@@ -1,0 +1,24 @@
+{
+  "name": "校園環境無名小站",
+  "short_name": "環境評分",
+  "description": "全校 32 班智慧校園環境評分與照片紀錄系統",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e6efea",
+  "theme_color": "#2a6b58",
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

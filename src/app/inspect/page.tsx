@@ -1,5 +1,5 @@
-import { InspectShell } from "@/components/InspectShell";
+import { InspectForm } from "@/components/InspectForm";
 
 export default function InspectPage() {
-  return <InspectShell />;
+  return <InspectForm />;
 }

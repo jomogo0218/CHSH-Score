@@ -1,0 +1,52 @@
+import type { InspectionDoc, InspectionItemDoc } from "@/lib/types";
+
+const FEED_KEY = "chsh_local_inspections";
+const ITEMS_KEY = "chsh_local_items";
+
+function readJson<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJson(key: string, value: unknown) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+/** Firebase 未設定時，本機暫存巡檢結果供大廳／班級預覽 */
+export function saveLocalInspection(
+  inspection: InspectionDoc,
+  items: Omit<InspectionItemDoc, "item_id">[],
+) {
+  const list = readJson<InspectionDoc[]>(FEED_KEY, []);
+  const next = [inspection, ...list.filter((i) => i.inspection_id !== inspection.inspection_id)];
+  writeJson(FEED_KEY, next);
+
+  const allItems = readJson<InspectionItemDoc[]>(ITEMS_KEY, []);
+  const filtered = allItems.filter((i) => i.inspection_id !== inspection.inspection_id);
+  const withIds = items.map((item, idx) => ({
+    ...item,
+    item_id: `local_${inspection.inspection_id}_${idx}`,
+  }));
+  writeJson(ITEMS_KEY, [...withIds, ...filtered]);
+}
+
+export function getLocalInspections(): InspectionDoc[] {
+  return readJson<InspectionDoc[]>(FEED_KEY, []).sort((a, b) =>
+    b.created_at.localeCompare(a.created_at),
+  );
+}
+
+export function getLocalInspectionsByClass(classId: string): InspectionDoc[] {
+  return getLocalInspections().filter((i) => i.class_id === classId);
+}
+
+export function getLocalItems(inspectionId: string): InspectionItemDoc[] {
+  return readJson<InspectionItemDoc[]>(ITEMS_KEY, []).filter(
+    (i) => i.inspection_id === inspectionId,
+  );
+}

@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1101.0",
+    "browser-image-compression": "^2.0.2",
     "firebase": "^12.17.0",
     "next": "16.2.12",
     "react": "19.2.4",
@@ -19,6 +21,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/serviceworker": "^0.0.200",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
