@@ -9,7 +9,10 @@ import {
   isFirebaseConfigured,
 } from "@/lib/firebase/client";
 import { subscribeAuth } from "@/lib/firebase/auth";
-import { publishInspection } from "@/lib/firebase/firestore";
+import {
+  fetchUserProfile,
+  publishInspection,
+} from "@/lib/firebase/firestore";
 import {
   compressInspectionPhoto,
   formatBytes,
@@ -17,7 +20,7 @@ import {
 import { saveLocalInspection } from "@/lib/local/store";
 import { publishLiveUpdate } from "@/lib/mqtt/publish";
 import { uploadInspectionPhoto } from "@/lib/r2/upload";
-import type { InspectionDoc, InspectionStatus } from "@/lib/types";
+import type { InspectionDoc, InspectionStatus, UserDoc } from "@/lib/types";
 import type { User } from "firebase/auth";
 
 type CategoryState = {
@@ -45,6 +48,8 @@ export function InspectForm({ classId }: { classId?: string }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserDoc | null | undefined>(undefined);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategoryState[]>(() =>
     INSPECTION_CATEGORIES.map((category) => ({
       category,
@@ -54,7 +59,25 @@ export function InspectForm({ classId }: { classId?: string }) {
     })),
   );
 
-  useEffect(() => subscribeAuth(setUser), []);
+  useEffect(() => {
+    return subscribeAuth((next) => {
+      setUser(next);
+      setProfile(undefined);
+      setProfileError(null);
+      if (!next) {
+        setProfile(null);
+        return;
+      }
+      void fetchUserProfile(next.uid)
+        .then((p) => setProfile(p))
+        .catch((err) => {
+          setProfile(null);
+          setProfileError(err instanceof Error ? err.message : "讀取 profile 失敗");
+        });
+    });
+  }, []);
+
+  const isAdmin = profile?.role === "admin";
 
   const totalScore = useMemo(() => {
     const deduction = categories
@@ -123,6 +146,12 @@ export function InspectForm({ classId }: { classId?: string }) {
     if (isFirebaseConfigured() && !auth?.currentUser) {
       setMessage(
         "尚未登入組長帳號：現在發布只會留在這支手機，導師看不到。請先到「登入」後再發布。",
+      );
+      return;
+    }
+    if (isFirebaseConfigured() && auth?.currentUser && profile?.role !== "admin") {
+      setMessage(
+        `已登入但不是 admin（目前 role=${profile?.role ?? "（沒有 users 文件）"}）。請在 Firestore 建立 users/${auth.currentUser.uid}，欄位 role=admin。`,
       );
       return;
     }
@@ -247,19 +276,39 @@ export function InspectForm({ classId }: { classId?: string }) {
         </p>
         <p
           className={`mt-3 rounded-lg px-3 py-2 text-sm ${
-            user
+            user && isAdmin
               ? "bg-leaf/15 text-mint"
-              : "bg-coral/10 text-coral"
+              : user
+                ? "bg-coral/10 text-coral"
+                : "bg-coral/10 text-coral"
           }`}
         >
-          {user
-            ? `已登入：${user.email ?? user.uid}（可寫入雲端相簿）`
-            : "尚未登入：發布不會進全校相簿。請先到「登入」。"}{" "}
           {!user ? (
-            <Link href="/login" className="underline">
-              前往登入
-            </Link>
-          ) : null}
+            <>
+              尚未登入：發布不會進全校相簿。{" "}
+              <Link href="/login" className="underline">
+                前往登入
+              </Link>
+            </>
+          ) : profile === undefined ? (
+            <>已登入：{user.email ?? user.uid}｜正在檢查 admin 權限…</>
+          ) : isAdmin ? (
+            <>
+              已登入：{user.email}｜權限正常（admin）｜UID：
+              {user.uid.slice(0, 8)}…
+            </>
+          ) : (
+            <>
+              已登入：{user.email}｜但沒有 admin 權限。
+              <br />
+              UID：<span className="font-mono">{user.uid}</span>
+              <br />
+              Firestore 應有文件 <span className="font-mono">users/{user.uid}</span>
+              ，欄位 <span className="font-mono">role = admin</span>
+              （目前：{profile?.role ?? "找不到文件"}）
+              {profileError ? `｜${profileError}` : ""}
+            </>
+          )}
         </p>
         {selected ? (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-leaf/15 px-4 py-3">
