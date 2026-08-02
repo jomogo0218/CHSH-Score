@@ -1,7 +1,13 @@
-import type { InspectionDoc, InspectionItemDoc } from "@/lib/types";
+import type {
+  CommentDoc,
+  InspectionDoc,
+  InspectionItemDoc,
+  InspectionStatus,
+} from "@/lib/types";
 
 const FEED_KEY = "chsh_local_inspections";
 const ITEMS_KEY = "chsh_local_items";
+const COMMENTS_KEY = "chsh_local_comments";
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -49,4 +55,33 @@ export function getLocalItems(inspectionId: string): InspectionItemDoc[] {
   return readJson<InspectionItemDoc[]>(ITEMS_KEY, []).filter(
     (i) => i.inspection_id === inspectionId,
   );
+}
+
+export function saveLocalComment(comment: CommentDoc, markFixed: boolean) {
+  const list = readJson<CommentDoc[]>(COMMENTS_KEY, []);
+  writeJson(COMMENTS_KEY, [comment, ...list]);
+
+  if (markFixed) {
+    const inspections = getLocalInspections();
+    const next = inspections.map((i) =>
+      i.inspection_id === comment.inspection_id
+        ? { ...i, status: "fixed" as InspectionStatus }
+        : i,
+    );
+    writeJson(FEED_KEY, next);
+  }
+}
+
+export function getLocalComments(inspectionId?: string): CommentDoc[] {
+  const list = readJson<CommentDoc[]>(COMMENTS_KEY, []);
+  const filtered = inspectionId
+    ? list.filter((c) => c.inspection_id === inspectionId)
+    : list;
+  return filtered.sort((a, b) => b.created_at.localeCompare(a.created_at));
+}
+
+export function getLocalCommentsByClass(classId: string): CommentDoc[] {
+  return readJson<CommentDoc[]>(COMMENTS_KEY, [])
+    .filter((c) => c.class_id === classId)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }

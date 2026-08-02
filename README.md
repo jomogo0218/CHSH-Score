@@ -55,11 +55,11 @@ npm run dev
 | `R2_*` / `NEXT_PUBLIC_CF_R2_PUBLIC_URL` | Cloudflare R2 |
 | `NEXT_PUBLIC_MQTT_*` / `MQTT_ADMIN_*` | EMQX Cloud |
 
-## 權限模型（本週）
+## 權限模型
 
 - 全校可讀班級／巡檢／留言
-- 僅 Firestore `users/{uid}.role == "admin"` 可寫入
-- 留言銷案寫入預留於 rules 註解，第 2／4 週啟用
+- 組長 `admin` 可寫入巡檢與完整管理
+- 同班衛生股長／導師可留言銷案（需 `users/{uid}` 設 `role` + `class_id`，並在 Console 貼上最新 `firestore.rules`）
 
 ## Roadmap
 

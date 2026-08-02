@@ -106,7 +106,7 @@
 
 狀態：`pass`｜`pending_fix`｜`fixed`
 
-權限原則：全校可讀；組長（`users/{uid}.role == admin`）可寫。留言銷案寫入於第 2／4 週開放衛生股長／導師。
+權限原則：全校可讀；組長（`users/{uid}.role == admin`）可寫巡檢。留言銷案：同班 `class_health_officer`／`teacher` 或 admin 可建立 comments，並可將巡檢 `status` 更新為 `fixed`。
 
 ---
 

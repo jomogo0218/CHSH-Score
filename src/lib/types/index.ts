@@ -44,11 +44,15 @@ export interface InspectionItemDoc {
 export interface CommentDoc {
   comment_id: string;
   inspection_id: string;
+  /** 方便 rules／列表過濾同班銷案 */
+  class_id?: string;
   author_role: UserRole | "class_health_officer" | "teacher" | "admin";
   author_name: string;
   content: string;
   reply_photo_url?: string;
   created_at: string;
+  /** 此則留言是否同時將巡檢標為已銷案 */
+  marks_fixed?: boolean;
 }
 
 export interface UserDoc {

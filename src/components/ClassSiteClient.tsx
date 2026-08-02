@@ -15,6 +15,7 @@ import {
   fetchInspectionsByClass,
 } from "@/lib/firebase/firestore";
 import {
+  getLocalCommentsByClass,
   getLocalInspectionsByClass,
   getLocalItems,
 } from "@/lib/local/store";
@@ -75,6 +76,8 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       const itemsMap: Record<string, InspectionItemDoc[]> = {};
       const allComments: CommentDoc[] = [];
+      const localComments = getLocalCommentsByClass(classId);
+      allComments.push(...localComments);
 
       for (let i = 0; i < merged.length; i++) {
         const insp = merged[i];
@@ -102,17 +105,22 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
           } catch {
             // ignore
           }
-        }
-        if (!allComments.length) {
+        } else {
           allComments.push(...getCommentsForInspection(insp.inspection_id));
         }
         itemsMap[insp.inspection_id] = items;
       }
 
+      const commentMap = new Map<string, CommentDoc>();
+      for (const c of allComments) commentMap.set(c.comment_id, c);
+      const uniqueComments = [...commentMap.values()].sort((a, b) =>
+        b.created_at.localeCompare(a.created_at),
+      );
+
       if (cancelled) return;
       setInspections(merged);
       setItemsByInspection(itemsMap);
-      setComments(allComments);
+      setComments(uniqueComments);
     }
 
     void load();
@@ -180,7 +188,11 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
         <h2 className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
           互動留言板
         </h2>
-        <Guestbook comments={comments} />
+        <Guestbook
+          comments={comments}
+          classId={classId}
+          inspections={inspections}
+        />
       </section>
     </div>
   );

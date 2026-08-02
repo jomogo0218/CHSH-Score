@@ -5,24 +5,29 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // 以 users/{uid}.role == 'admin' 判定組長（本週建議方式，方便本機測）
     function isAdmin() {
       return signedIn()
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // 預留：同班衛生股長／導師（第 2／4 週啟用留言寫入時使用）
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isClassMember(classId) {
-      return signedIn()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.class_id == classId;
+      return signedIn() && userDoc().class_id == classId;
     }
 
     function isHealthOfficerOrTeacher() {
       return signedIn()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['class_health_officer', 'teacher'];
+        && userDoc().role in ['class_health_officer', 'teacher'];
     }
 
-    // 全校公開唯讀；寫入僅組長
+    function canCloseCase(classId) {
+      return isAdmin()
+        || (isHealthOfficerOrTeacher() && isClassMember(classId));
+    }
+
     match /classes/{classId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -30,7 +35,13 @@ service cloud.firestore {
 
     match /inspections/{inspectionId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      // 組長可完整更新；衛生股長／導師可將同班巡檢銷案（status → fixed）
+      allow update: if isAdmin()
+        || (canCloseCase(resource.data.class_id)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status'])
+            && request.resource.data.status == 'fixed');
     }
 
     match /inspection_items/{itemId} {
@@ -40,14 +51,15 @@ service cloud.firestore {
 
     match /comments/{commentId} {
       allow read: if true;
-      // 本週：僅 admin 可寫。之後可改為：
-      // allow create: if isAdmin() || isHealthOfficerOrTeacher();
-      allow create, update, delete: if isAdmin();
+      allow create: if canCloseCase(request.resource.data.class_id)
+        && request.resource.data.keys().hasAll([
+          'inspection_id', 'class_id', 'author_role', 'author_name', 'content', 'created_at'
+        ]);
+      allow update, delete: if isAdmin();
     }
 
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      // 本人可建立／更新自己的 profile，但不可自行把 role 改成 admin
       allow create: if signedIn()
         && request.auth.uid == uid
         && request.resource.data.role != 'admin';

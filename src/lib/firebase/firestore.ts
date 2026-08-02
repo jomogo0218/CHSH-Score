@@ -8,9 +8,11 @@ import {
   orderBy,
   query,
   setDoc,
+  updateDoc,
   where,
   type DocumentData,
 } from "firebase/firestore";
+import { invalidateCache } from "@/lib/cache/ttl";
 import { getFirestoreDb, isFirebaseConfigured } from "@/lib/firebase/client";
 import type {
   ClassDoc,
@@ -19,6 +21,7 @@ import type {
   InspectionItemDoc,
   InspectionStatus,
   UserDoc,
+  UserRole,
 } from "@/lib/types";
 
 /** 大廳／看板預設最多讀取筆數（控 Firestore 讀取） */
@@ -184,5 +187,53 @@ export async function publishInspection(
     });
   }
 
+  invalidateCache(`class:${input.classId}`);
+  invalidateCache("hall:");
+  invalidateCache("board:");
+
   return inspection;
+}
+
+export interface PostCommentInput {
+  inspectionId: string;
+  classId: string;
+  authorName: string;
+  authorRole: UserRole;
+  content: string;
+  replyPhotoUrl?: string;
+  markFixed?: boolean;
+}
+
+export async function postComment(
+  input: PostCommentInput,
+): Promise<CommentDoc> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase 尚未設定");
+  }
+  const db = requireDb();
+  const createdAt = new Date().toISOString();
+  const payload = {
+    inspection_id: input.inspectionId,
+    class_id: input.classId,
+    author_role: input.authorRole,
+    author_name: input.authorName,
+    content: input.content.trim(),
+    reply_photo_url: input.replyPhotoUrl ?? "",
+    created_at: createdAt,
+    marks_fixed: Boolean(input.markFixed),
+  };
+
+  const ref = await addDoc(collection(db, "comments"), payload);
+
+  if (input.markFixed) {
+    await updateDoc(doc(db, "inspections", input.inspectionId), {
+      status: "fixed" satisfies InspectionStatus,
+    });
+  }
+
+  invalidateCache(`class:${input.classId}`);
+  invalidateCache("hall:");
+  invalidateCache("board:");
+
+  return { comment_id: ref.id, ...payload };
 }
