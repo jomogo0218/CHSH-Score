@@ -4,7 +4,7 @@ const links = [
   { href: "/", label: "校園大廳" },
   { href: "/board", label: "川堂看板" },
   { href: "/qr", label: "QR 推廣" },
-  { href: "/inspect", label: "組長評分" },
+  { href: "/inspect", label: "巡察上傳" },
   { href: "/login", label: "登入" },
 ];
 
@@ -17,7 +17,7 @@ export function SiteHeader() {
             校園環境無名小站
           </span>
           <span className="hidden text-xs text-muted sm:inline">
-            相簿 · 網誌 · 留言
+            巡察佐證 · 改善回報
           </span>
         </Link>
         <nav className="flex flex-wrap items-center gap-1 text-sm sm:gap-2">

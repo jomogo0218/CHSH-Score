@@ -74,7 +74,7 @@ export function ClassQrPanel({ classId, className }: { classId: string; classNam
         {className} QR Code
       </h3>
       <p className="text-sm text-muted">
-        可貼在教室門口：掃碼進班級小站看佐證；組長可掃巡檢連結快速評分。
+        可貼教室門口：掃左邊看巡察照片與改善回報；掃右邊給組長快速上傳。
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <QrImage value={classUrl} label="班級主頁" />

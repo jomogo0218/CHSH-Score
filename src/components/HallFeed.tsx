@@ -8,10 +8,10 @@ export function HallFeed({ items }: { items: InspectionDoc[] }) {
     <section className="panel animate-rise p-5 sm:p-6">
       <div className="mb-4">
         <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
-          最新巡檢動態牆
+          最新巡察佐證
         </h2>
         <p className="mt-1 text-sm text-muted">
-          像無名小站一樣瀏覽各班今日相簿與評語
+          點進班級可看照片；待改善班級請清掃後於留言板回報
         </p>
       </div>
       <ul className="grid gap-4 sm:grid-cols-2">
@@ -60,9 +60,9 @@ export function TopBoard({ inspections }: { inspections: InspectionDoc[] }) {
     <section className="panel animate-rise overflow-hidden">
       <div className="border-b border-line/50 bg-mint px-5 py-3 text-white sm:px-6">
         <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">
-          今日頭條 · 優良榜
+          今日優良
         </h2>
-        <p className="text-sm text-white/85">本日得分最高班級</p>
+        <p className="text-sm text-white/85">本日巡察得分較高的班級</p>
       </div>
       <ol className="grid gap-0 sm:grid-cols-3">
         {inspections.map((item, index) => {

@@ -23,11 +23,11 @@ export function QrPromoClient() {
       <header className="animate-rise space-y-2">
         <p className="text-sm tracking-widest text-muted">QR PROMOTE</p>
         <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-mint">
-          班級 QR Code 推廣
+          班級 QR（給導師／同學）
         </h1>
         <p className="max-w-2xl text-muted">
-          列印張貼於教室門口。學生／導師掃碼進入班級小站；組長可用巡檢 QR
-          快速開評分頁。
+          列印貼在教室：掃碼看巡察照片；清掃後可在班級頁「改善回報」上傳完成證明。組長可用巡察 QR
+          快速開上傳頁。
         </p>
         <p className="text-sm">
           <Link href="/" className="text-mint underline">

@@ -42,3 +42,7 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# local Vercel CLI cache/auth (do not commit)
+.xdg-data/
+.xdg-cache/

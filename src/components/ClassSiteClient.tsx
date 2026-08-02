@@ -154,9 +154,9 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       <nav className="flex flex-wrap gap-2 text-sm">
         {[
-          { id: "albums", label: "相簿" },
-          { id: "blogs", label: "網誌" },
-          { id: "guestbook", label: "留言板" },
+          { id: "albums", label: "巡察照片" },
+          { id: "blogs", label: "巡察說明" },
+          { id: "guestbook", label: "改善回報" },
           { id: "qr", label: "QR" },
         ].map((tab) => (
           <a
@@ -171,7 +171,7 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       <section id="albums" className="panel scroll-mt-24 p-5 sm:p-6">
         <h2 className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
-          相簿專區
+          巡察照片
         </h2>
         <AlbumGrid
           inspections={inspections}
@@ -181,14 +181,14 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       <section id="blogs" className="panel scroll-mt-24 p-5 sm:p-6">
         <h2 className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
-          網誌專區
+          巡察說明
         </h2>
         <BlogList inspections={inspections} />
       </section>
 
       <section id="guestbook" className="panel scroll-mt-24 p-5 sm:p-6">
         <h2 className="mb-4 font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
-          互動留言板
+          改善回報
         </h2>
         <Guestbook
           comments={comments}

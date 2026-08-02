@@ -200,10 +200,10 @@ export function InspectForm({ classId }: { classId?: string }) {
     <div className="space-y-6">
       <section className="panel p-5 sm:p-6">
         <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold text-mint">
-          組長快速評分
+          巡察拍照與評分
         </h1>
         <p className="mt-2 text-muted">
-          點選缺失區域自動扣分，拍照會先壓縮至約 300KB 再上傳。
+          發現缺失就拍照當佐證（自動壓至約 300KB），可順便扣分。發布後導師與同學會在班級頁看到照片。
         </p>
         {selected ? (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-leaf/15 px-4 py-3">

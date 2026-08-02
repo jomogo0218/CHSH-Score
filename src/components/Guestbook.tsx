@@ -177,9 +177,9 @@ export function Guestbook({
         onSubmit={onSubmit}
         className="space-y-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--accent-soft)]/20 p-4"
       >
-        <h3 className="font-semibold text-ink">改善回覆／銷案</h3>
+        <h3 className="font-semibold text-ink">清掃完成回報</h3>
         <p className="text-xs text-muted">
-          衛生股長或導師可上傳改善照片並銷案。未登入時寫入本機預覽。
+          導師／衛生股長看完巡察照片後，上傳改善照並說明已清掃。勾選銷案後狀態會改為「已銷案」。未登入時先存本機預覽。
         </p>
 
         <label className="block space-y-1 text-sm">
@@ -266,7 +266,7 @@ export function Guestbook({
             checked={markFixed}
             onChange={(e) => setMarkFixed(e.target.checked)}
           />
-          同時將此巡檢標為「已銷案」
+          確認已清掃完成，標為「已銷案」
         </label>
 
         <button
@@ -274,7 +274,7 @@ export function Guestbook({
           disabled={busy || !inspectionId}
           className="rounded-xl bg-mint px-4 py-2.5 font-semibold text-white hover:bg-leaf disabled:opacity-60"
         >
-          {busy ? "處理中…" : "送出回覆"}
+          {busy ? "處理中…" : "回報已清掃"}
         </button>
         {message ? <p className="text-sm text-muted">{message}</p> : null}
       </form>
@@ -306,7 +306,7 @@ export function Guestbook({
       ))}
       {comments.length === 0 ? (
         <p className="text-sm text-[color:var(--ink-muted)]">
-          尚無留言。扣分後可於此上傳改善照片銷案。
+          尚無回報。若有待改善項目，清掃後請在此上傳照片並回報完成。
         </p>
       ) : null}
     </div>

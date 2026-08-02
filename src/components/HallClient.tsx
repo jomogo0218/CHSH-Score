@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ClassDirectory } from "@/components/ClassDirectory";
 import { HallFeed, TopBoard } from "@/components/HallFeed";
+import { SetupStatusBanner } from "@/components/SetupStatusBanner";
 import { FETCH_TTL_MS, setCached, withTtlCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { fetchLatestInspections } from "@/lib/firebase/firestore";
@@ -110,13 +111,14 @@ export function HallClient() {
 
   return (
     <div className="space-y-6">
+      <SetupStatusBanner />
       <section className="animate-rise space-y-2">
-        <p className="text-sm tracking-widest text-muted">CAMPUS WRETCH HALL</p>
+        <p className="text-sm tracking-widest text-muted">CAMPUS PATROL HALL</p>
         <h1 className="font-[family-name:var(--font-display)] text-4xl font-extrabold text-ink sm:text-5xl">
           校園環境無名小站
         </h1>
         <p className="max-w-2xl text-muted">
-          相簿、網誌與留言互動，取代硬邦邦的扣分單。今日巡檢動態即時上牆。
+          組長巡察拍照給導師與同學看；班級改善後可回報銷案。評分用來標示待改善與優良。
         </p>
         <p className="text-xs text-muted">
           資料來源：{source}（{FETCH_TTL_MS / 1000} 秒內重整沿用快取
