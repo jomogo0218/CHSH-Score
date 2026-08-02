@@ -52,6 +52,7 @@
 | `school/button/{classId}` | 門口按鈕觸發組長切班 |
 
 本週僅完成 `lib/mqtt` 抽象；真實 WebSocket 推播於第 3 週串接。
+ESP32 `button_user` 暫緩。軟體端：瀏覽器以 `school_client` 訂閱；發布走 `/api/mqtt-publish`（`MQTT_ADMIN_*`）。
 
 ## 4. 本機啟動
 

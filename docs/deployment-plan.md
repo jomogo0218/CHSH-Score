@@ -149,5 +149,5 @@
 - [ ] `npm install` → `npm run dev`
 - [ ] 確認大廳／班級／看板／巡檢／登入可開
 - [x] 第 2 週：實作壓縮上傳與真實 Firestore 寫入
-- [ ] 第 3 週：接 EMQX 真實 publish／subscribe（不含 ESP32）
+- [x] 第 3 週：接 EMQX 真實 publish／subscribe（不含 ESP32）
 - [x] Firestore 讀取防護：`limit`＋前端 TTL 快取

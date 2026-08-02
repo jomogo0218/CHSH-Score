@@ -67,7 +67,7 @@ npm run dev
 |---|---|
 | 1（已完成） | 雲端說明、骨架、模型、Rules、路由殼層、R2／MQTT stub |
 | 2（已完成） | 組長評分／壓縮上傳 PWA；介面綁真實資料 |
-| 3 | MQTT WebSocket 軟體即時（**ESP32 門鈕暫緩**） |
+| 3（軟體完成） | MQTT WebSocket 軟體即時（**ESP32 門鈕暫緩**） |
 | 4 | 實測、銷案演練、QR Code 上線（`/qr` 與班級頁） |
 
 照片儲存維持 **Cloudflare R2**。Firestore 查詢已加 `limit` 與約 45 秒前端快取，避免短時間狂重整耗盡免費讀取額度。

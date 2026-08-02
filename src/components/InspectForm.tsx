@@ -11,11 +11,7 @@ import {
   formatBytes,
 } from "@/lib/image/compress";
 import { saveLocalInspection } from "@/lib/local/store";
-import {
-  createMqttClientStub,
-  getSchoolClientConfig,
-  MQTT_TOPICS,
-} from "@/lib/mqtt/client";
+import { publishLiveUpdate } from "@/lib/mqtt/publish";
 import { uploadInspectionPhoto } from "@/lib/r2/upload";
 import type { InspectionDoc, InspectionStatus } from "@/lib/types";
 
@@ -173,9 +169,7 @@ export function InspectForm({ classId }: { classId?: string }) {
         );
       }
 
-      const mqtt = createMqttClientStub(getSchoolClientConfig());
-      await mqtt.connect();
-      const livePayload = JSON.stringify({
+      const mqttResult = await publishLiveUpdate({
         class_id: classId,
         score: inspection.total_score,
         note: inspection.summary_blog,
@@ -183,16 +177,17 @@ export function InspectForm({ classId }: { classId?: string }) {
         created_at: inspection.created_at,
         status: inspection.status,
       });
-      await mqtt.publish(MQTT_TOPICS.liveFeed, livePayload);
-      await mqtt.publish(MQTT_TOPICS.classChannel(classId), livePayload);
-      await mqtt.disconnect();
 
       setMessage(
         `已發布 ${selected.class_name}：${inspection.total_score} 分（${inspection.status}）。${
           isFirebaseConfigured() && auth?.currentUser
             ? "已寫入 Firestore"
             : "已存本機預覽（設定 Firebase 並登入後可寫雲端）"
-        }。MQTT 廣播於第 3 週接真實 broker。`,
+        }。${
+          mqttResult.stub
+            ? "MQTT 未設定管理員憑證，略過即時廣播。"
+            : "已 MQTT 廣播至大廳／看板。"
+        }`,
       );
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "發布失敗");

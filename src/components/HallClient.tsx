@@ -3,16 +3,18 @@
 import { useEffect, useState } from "react";
 import { ClassDirectory } from "@/components/ClassDirectory";
 import { HallFeed, TopBoard } from "@/components/HallFeed";
-import { FETCH_TTL_MS, withTtlCache } from "@/lib/cache/ttl";
+import { FETCH_TTL_MS, setCached, withTtlCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { fetchLatestInspections } from "@/lib/firebase/firestore";
 import { getLocalInspections } from "@/lib/local/store";
+import { useLiveFeedSubscription } from "@/lib/mqtt/useLiveFeed";
 import {
   allClasses,
+  getDemoClass,
   getLatestFeed,
   getTodayTopClasses,
 } from "@/lib/seed/demo-data";
-import type { InspectionDoc } from "@/lib/types";
+import type { InspectionDoc, LiveFeedPayload } from "@/lib/types";
 
 function mergeFeed(
   remote: InspectionDoc[],
@@ -28,9 +30,38 @@ function mergeFeed(
   );
 }
 
+function liveToInspection(payload: LiveFeedPayload): InspectionDoc {
+  const date = payload.created_at.slice(0, 10);
+  return {
+    inspection_id: `${date}_${payload.class_id}`,
+    date,
+    class_id: payload.class_id,
+    inspector_id: "mqtt",
+    total_score: payload.score,
+    summary_blog: payload.note,
+    status: payload.status ?? "pending_fix",
+    cover_photo_url: payload.photo_url || undefined,
+    created_at: payload.created_at,
+  };
+}
+
 export function HallClient() {
   const [feed, setFeed] = useState<InspectionDoc[]>(getLatestFeed());
   const [source, setSource] = useState("demo");
+  const [liveHint, setLiveHint] = useState<string | null>(null);
+
+  useLiveFeedSubscription((payload) => {
+    const doc = liveToInspection(payload);
+    setFeed((prev) => {
+      const next = mergeFeed([doc], [], prev);
+      setCached("hall:latest", next.slice(0, 30), FETCH_TTL_MS);
+      return next;
+    });
+    const name =
+      getDemoClass(payload.class_id)?.class_name ?? payload.class_id;
+    setLiveHint(`即時更新：${name} ${payload.score} 分`);
+    setSource("mqtt");
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +119,8 @@ export function HallClient() {
           相簿、網誌與留言互動，取代硬邦邦的扣分單。今日巡檢動態即時上牆。
         </p>
         <p className="text-xs text-muted">
-          資料來源：{source}（{FETCH_TTL_MS / 1000} 秒內重整沿用快取）
+          資料來源：{source}（{FETCH_TTL_MS / 1000} 秒內重整沿用快取
+          {liveHint ? `；${liveHint}` : ""}）
         </p>
       </section>
 
