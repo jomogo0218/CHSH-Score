@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CLASS_ROSTER, INSPECTION_CATEGORIES } from "@/lib/constants";
-import { isFirebaseConfigured } from "@/lib/firebase/client";
-import { getFirebaseAuth } from "@/lib/firebase/client";
+import { invalidateCache } from "@/lib/cache/ttl";
+import {
+  getFirebaseAuth,
+  isFirebaseConfigured,
+} from "@/lib/firebase/client";
+import { subscribeAuth } from "@/lib/firebase/auth";
 import { publishInspection } from "@/lib/firebase/firestore";
 import {
   compressInspectionPhoto,
@@ -14,6 +18,7 @@ import { saveLocalInspection } from "@/lib/local/store";
 import { publishLiveUpdate } from "@/lib/mqtt/publish";
 import { uploadInspectionPhoto } from "@/lib/r2/upload";
 import type { InspectionDoc, InspectionStatus } from "@/lib/types";
+import type { User } from "firebase/auth";
 
 type CategoryState = {
   category: string;
@@ -39,6 +44,7 @@ export function InspectForm({ classId }: { classId?: string }) {
   const [summary, setSummary] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [categories, setCategories] = useState<CategoryState[]>(() =>
     INSPECTION_CATEGORIES.map((category) => ({
       category,
@@ -48,12 +54,16 @@ export function InspectForm({ classId }: { classId?: string }) {
     })),
   );
 
+  useEffect(() => subscribeAuth(setUser), []);
+
   const totalScore = useMemo(() => {
     const deduction = categories
       .filter((c) => c.flagged)
       .reduce((sum, c) => sum + Math.abs(c.deduction), 0);
     return Math.max(0, 100 - deduction);
   }, [categories]);
+
+  const photoCount = categories.filter((c) => c.photoUrl).length;
 
   function toggleCategory(category: string) {
     setCategories((prev) =>
@@ -63,10 +73,7 @@ export function InspectForm({ classId }: { classId?: string }) {
     );
   }
 
-  function updateCategory(
-    category: string,
-    patch: Partial<CategoryState>,
-  ) {
+  function updateCategory(category: string, patch: Partial<CategoryState>) {
     setCategories((prev) =>
       prev.map((c) => (c.category === category ? { ...c, ...patch } : c)),
     );
@@ -86,12 +93,12 @@ export function InspectForm({ classId }: { classId?: string }) {
         previewUrl: uploaded.photoUrl,
         note:
           categories.find((c) => c.category === activeCategory)?.note ||
-          `${activeCategory}缺失`,
+          `${activeCategory}巡察佐證`,
         originalBytes,
         compressedBytes: compressed.size,
       });
       setMessage(
-        `${activeCategory} 已壓縮 ${formatBytes(originalBytes)} → ${formatBytes(compressed.size)}${uploaded.stub ? "（stub／本機預覽）" : " 並上傳 R2"}`,
+        `${activeCategory} 照片已就緒（${formatBytes(originalBytes)} → ${formatBytes(compressed.size)}${uploaded.stub ? "，stub" : "，已上 R2"}）。請再按下方「發布到班級相簿」。`,
       );
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "上傳失敗");
@@ -107,20 +114,39 @@ export function InspectForm({ classId }: { classId?: string }) {
       setMessage("請先選擇班級");
       return;
     }
+    if (photoCount === 0 && !categories.some((c) => c.flagged)) {
+      setMessage("請先至少拍一張照片或標記一個缺失項目，再發布。");
+      return;
+    }
+
+    const auth = getFirebaseAuth();
+    if (isFirebaseConfigured() && !auth?.currentUser) {
+      setMessage(
+        "尚未登入組長帳號：現在發布只會留在這支手機，導師看不到。請先到「登入」後再發布。",
+      );
+      return;
+    }
+
     setBusy(true);
-    setMessage(null);
+    setMessage("正在寫入班級相簿…");
     try {
       const flagged = categories.filter((c) => c.flagged);
+      const withPhotos = categories.filter((c) => c.photoUrl);
       const cover =
-        flagged.find((c) => c.photoUrl)?.photoUrl ??
-        categories.find((c) => c.photoUrl)?.photoUrl;
+        withPhotos[0]?.photoUrl ??
+        flagged.find((c) => c.photoUrl)?.photoUrl;
       const summaryBlog =
         summary.trim() ||
-        (flagged.length
-          ? flagged.map((c) => `${c.category}${c.note ? `：${c.note}` : ""}`).join("；")
+        (flagged.length || withPhotos.length
+          ? [...flagged, ...withPhotos]
+              .filter(
+                (c, i, arr) =>
+                  arr.findIndex((x) => x.category === c.category) === i,
+              )
+              .map((c) => `${c.category}${c.note ? `：${c.note}` : ""}`)
+              .join("；")
           : "各區整潔，維持良好。");
 
-      const auth = getFirebaseAuth();
       const inspectorId = auth?.currentUser?.uid ?? "local_inspector";
       const payloadCats = categories.map((c) => ({
         category: c.category,
@@ -130,6 +156,7 @@ export function InspectForm({ classId }: { classId?: string }) {
       }));
 
       let inspection: InspectionDoc;
+      let wroteCloud = false;
 
       if (isFirebaseConfigured() && auth?.currentUser) {
         inspection = await publishInspection({
@@ -139,6 +166,7 @@ export function InspectForm({ classId }: { classId?: string }) {
           categories: payloadCats,
           coverPhotoUrl: cover,
         });
+        wroteCloud = true;
       } else {
         const deduction = flagged.reduce((s, c) => s + Math.abs(c.deduction), 0);
         const status: InspectionStatus =
@@ -169,28 +197,40 @@ export function InspectForm({ classId }: { classId?: string }) {
         );
       }
 
-      const mqttResult = await publishLiveUpdate({
-        class_id: classId,
-        score: inspection.total_score,
-        note: inspection.summary_blog,
-        photo_url: inspection.cover_photo_url ?? "",
-        created_at: inspection.created_at,
-        status: inspection.status,
-      });
+      invalidateCache(`class:${classId}`);
+      invalidateCache("hall:");
+      invalidateCache("board:");
+
+      try {
+        await publishLiveUpdate({
+          class_id: classId,
+          score: inspection.total_score,
+          note: inspection.summary_blog,
+          photo_url: inspection.cover_photo_url ?? "",
+          created_at: inspection.created_at,
+          status: inspection.status,
+        });
+      } catch {
+        // MQTT optional
+      }
 
       setMessage(
-        `已發布 ${selected.class_name}：${inspection.total_score} 分（${inspection.status}）。${
-          isFirebaseConfigured() && auth?.currentUser
-            ? "已寫入 Firestore"
-            : "已存本機預覽（設定 Firebase 並登入後可寫雲端）"
-        }。${
-          mqttResult.stub
-            ? "MQTT 未設定管理員憑證，略過即時廣播。"
-            : "已 MQTT 廣播至大廳／看板。"
-        }`,
+        wroteCloud
+          ? `已發布到雲端：${selected.class_name} ${inspection.total_score} 分。請打開班級相簿查看（可強制重整）。`
+          : `僅存本機：${selected.class_name}。導師在其他裝置看不到，請先登入再發布。`,
       );
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "發布失敗");
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? String((err as { code?: string }).code)
+          : "";
+      if (code.includes("permission-denied")) {
+        setMessage(
+          "沒有寫入權限。請確認 Firestore users/{你的UID} 有 role=admin，且已登入。",
+        );
+      } else {
+        setMessage(err instanceof Error ? err.message : "發布失敗");
+      }
     } finally {
       setBusy(false);
     }
@@ -203,7 +243,23 @@ export function InspectForm({ classId }: { classId?: string }) {
           巡察拍照與評分
         </h1>
         <p className="mt-2 text-muted">
-          發現缺失就拍照當佐證（自動壓至約 300KB），可順便扣分。發布後導師與同學會在班級頁看到照片。
+          流程：選班 → 拍照 → 按「發布到班級相簿」。只拍照不發布，班級頁不會出現。
+        </p>
+        <p
+          className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+            user
+              ? "bg-leaf/15 text-mint"
+              : "bg-coral/10 text-coral"
+          }`}
+        >
+          {user
+            ? `已登入：${user.email ?? user.uid}（可寫入雲端相簿）`
+            : "尚未登入：發布不會進全校相簿。請先到「登入」。"}{" "}
+          {!user ? (
+            <Link href="/login" className="underline">
+              前往登入
+            </Link>
+          ) : null}
         </p>
         {selected ? (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-leaf/15 px-4 py-3">
@@ -364,17 +420,25 @@ export function InspectForm({ classId }: { classId?: string }) {
                 onClick={onPublish}
                 className="rounded-xl bg-mint px-5 py-2.5 font-semibold text-white transition hover:bg-leaf disabled:opacity-50"
               >
-                {busy ? "處理中…" : "發布"}
+                {busy ? "處理中…" : "發布到班級相簿"}
               </button>
               <Link
                 href={`/classes/${classId}`}
                 className="rounded-xl border border-line px-5 py-2.5 font-semibold text-ink hover:bg-leaf/10"
               >
-                查看班級小站
+                查看班級相簿
               </Link>
             </div>
             {message ? (
-              <p className="mt-4 rounded-lg bg-leaf/10 px-3 py-2 text-sm text-ink">
+              <p
+                className={`mt-4 rounded-lg px-3 py-2 text-sm ${
+                  message.includes("雲端") || message.includes("已發布到")
+                    ? "bg-leaf/15 text-mint"
+                    : message.includes("尚未登入") || message.includes("權限")
+                      ? "bg-coral/10 text-coral"
+                      : "bg-leaf/10 text-ink"
+                }`}
+              >
                 {message}
               </p>
             ) : null}

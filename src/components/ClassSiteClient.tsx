@@ -7,7 +7,6 @@ import { BlogList } from "@/components/BlogList";
 import { ClassBanner } from "@/components/ClassBanner";
 import { ClassQrPanel } from "@/components/ClassQrPanel";
 import { Guestbook } from "@/components/Guestbook";
-import { FETCH_TTL_MS, withTtlCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import {
   CLASS_INSPECTIONS_LIMIT,
@@ -56,19 +55,21 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       let remote: InspectionDoc[] = [];
       if (isFirebaseConfigured()) {
         try {
-          const result = await withTtlCache(
-            `class:${classId}:inspections`,
-            () => fetchInspectionsByClass(classId, CLASS_INSPECTIONS_LIMIT),
-            FETCH_TTL_MS,
+          // 班級相簿不走 TTL，避免剛發布卻還看到舊快取／demo
+          remote = await fetchInspectionsByClass(
+            classId,
+            CLASS_INSPECTIONS_LIMIT,
           );
-          remote = result.data;
         } catch {
           // ignore
         }
       }
 
+      const hasReal = remote.length > 0 || local.length > 0;
+      const seed = hasReal ? [] : demo;
+
       const map = new Map<string, InspectionDoc>();
-      for (const item of [...demo, ...local, ...remote]) {
+      for (const item of [...seed, ...local, ...remote]) {
         map.set(item.inspection_id, item);
       }
       const merged = [...map.values()]
@@ -82,7 +83,9 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       for (let i = 0; i < merged.length; i++) {
         const insp = merged[i];
-        let items = getItemsForInspection(insp.inspection_id);
+        let items = hasReal
+          ? getLocalItems(insp.inspection_id)
+          : getItemsForInspection(insp.inspection_id);
         const localItems = getLocalItems(insp.inspection_id);
         if (localItems.length) items = localItems;
 
@@ -90,23 +93,15 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
           isFirebaseConfigured() && i < DETAIL_FETCH_LIMIT;
         if (shouldFetchRemote) {
           try {
-            const remoteItems = await withTtlCache(
-              `class:${classId}:items:${insp.inspection_id}`,
-              () => fetchInspectionItems(insp.inspection_id),
-              FETCH_TTL_MS,
-            );
-            if (remoteItems.data.length) items = remoteItems.data;
+            const remoteItems = await fetchInspectionItems(insp.inspection_id);
+            if (remoteItems.length) items = remoteItems;
 
-            const remoteComments = await withTtlCache(
-              `class:${classId}:comments:${insp.inspection_id}`,
-              () => fetchComments(insp.inspection_id),
-              FETCH_TTL_MS,
-            );
-            allComments.push(...remoteComments.data);
+            const remoteComments = await fetchComments(insp.inspection_id);
+            allComments.push(...remoteComments);
           } catch {
             // ignore
           }
-        } else {
+        } else if (!hasReal) {
           allComments.push(...getCommentsForInspection(insp.inspection_id));
         }
         itemsMap[insp.inspection_id] = items;
