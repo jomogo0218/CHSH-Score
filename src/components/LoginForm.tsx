@@ -20,7 +20,27 @@ export function LoginForm() {
       await loginAsAdmin(email, password);
       setMessage("登入成功。可前往「巡察上傳」發布照片與評分。");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "登入失敗");
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? String((err as { code?: string }).code)
+          : "";
+      const raw = err instanceof Error ? err.message : "登入失敗";
+      let hint = raw;
+      if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) {
+        hint = "帳號或密碼錯誤。請確認 Firebase Authentication 已建立此使用者。";
+      } else if (code.includes("unauthorized-domain")) {
+        hint =
+          "網域未授權。請到 Firebase Console → Authentication → Settings → Authorized domains，新增 chsh-score.vercel.app";
+      } else if (code.includes("operation-not-allowed")) {
+        hint = "尚未啟用 Email/Password 登入。請到 Authentication → Sign-in method 開啟。";
+      } else if (code.includes("too-many-requests")) {
+        hint = "嘗試太多次，請稍後再試。";
+      } else if (code.includes("network-request-failed")) {
+        hint = "網路連線失敗，請檢查網路後重試。";
+      } else if (code) {
+        hint = `${raw}（${code}）`;
+      }
+      setMessage(hint);
     } finally {
       setLoading(false);
     }
