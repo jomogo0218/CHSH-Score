@@ -6,8 +6,10 @@ import { AlbumGrid } from "@/components/AlbumGrid";
 import { BlogList } from "@/components/BlogList";
 import { ClassBanner } from "@/components/ClassBanner";
 import { Guestbook } from "@/components/Guestbook";
+import { FETCH_TTL_MS, withTtlCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import {
+  CLASS_INSPECTIONS_LIMIT,
   fetchComments,
   fetchInspectionItems,
   fetchInspectionsByClass,
@@ -29,6 +31,9 @@ import type {
   InspectionItemDoc,
 } from "@/lib/types";
 
+/** 僅對最近幾筆巡檢拉 items／comments，避免班級頁一次打爆讀取 */
+const DETAIL_FETCH_LIMIT = 3;
+
 export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
   const classId = classDoc.class_id;
   const [inspections, setInspections] = useState<InspectionDoc[]>(
@@ -49,7 +54,12 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       let remote: InspectionDoc[] = [];
       if (isFirebaseConfigured()) {
         try {
-          remote = await fetchInspectionsByClass(classId);
+          const result = await withTtlCache(
+            `class:${classId}:inspections`,
+            () => fetchInspectionsByClass(classId, CLASS_INSPECTIONS_LIMIT),
+            FETCH_TTL_MS,
+          );
+          remote = result.data;
         } catch {
           // ignore
         }
@@ -59,23 +69,36 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       for (const item of [...demo, ...local, ...remote]) {
         map.set(item.inspection_id, item);
       }
-      const merged = [...map.values()].sort((a, b) =>
-        b.date.localeCompare(a.date),
-      );
+      const merged = [...map.values()]
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, CLASS_INSPECTIONS_LIMIT);
 
       const itemsMap: Record<string, InspectionItemDoc[]> = {};
       const allComments: CommentDoc[] = [];
 
-      for (const insp of merged) {
+      for (let i = 0; i < merged.length; i++) {
+        const insp = merged[i];
         let items = getItemsForInspection(insp.inspection_id);
         const localItems = getLocalItems(insp.inspection_id);
         if (localItems.length) items = localItems;
-        if (isFirebaseConfigured()) {
+
+        const shouldFetchRemote =
+          isFirebaseConfigured() && i < DETAIL_FETCH_LIMIT;
+        if (shouldFetchRemote) {
           try {
-            const remoteItems = await fetchInspectionItems(insp.inspection_id);
-            if (remoteItems.length) items = remoteItems;
-            const remoteComments = await fetchComments(insp.inspection_id);
-            allComments.push(...remoteComments);
+            const remoteItems = await withTtlCache(
+              `class:${classId}:items:${insp.inspection_id}`,
+              () => fetchInspectionItems(insp.inspection_id),
+              FETCH_TTL_MS,
+            );
+            if (remoteItems.data.length) items = remoteItems.data;
+
+            const remoteComments = await withTtlCache(
+              `class:${classId}:comments:${insp.inspection_id}`,
+              () => fetchComments(insp.inspection_id),
+              FETCH_TTL_MS,
+            );
+            allComments.push(...remoteComments.data);
           } catch {
             // ignore
           }

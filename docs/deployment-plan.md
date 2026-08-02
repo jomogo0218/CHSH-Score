@@ -84,15 +84,13 @@
 
 ---
 
-## 四、走廊 MQTT 巡檢實體按鈕（選配，第 3 週）
+## 四、走廊 MQTT 巡檢實體按鈕（選配，**暫緩**）
 
 ```
 [各班門口 ESP32] --按壓--> school/button/101 --> [組長手機自動跳轉 /inspect/101]
 ```
 
-每班材料：ESP32（約 NT$ 120）＋微動按鈕（約 NT$ 20）＋外殼膠帶（約 NT$ 10）。
-
-韌體要點：連校園 Wi-Fi → 連 EMQX → GPIO 按下 publish `TRIGGER` → debounce 2 秒。
+目前以 App 內選班巡檢為主。硬體恢復時：每班材料約 ESP32（NT$ 120）＋微動按鈕（NT$ 20）＋外殼；韌體連校園 Wi-Fi → EMQX → GPIO publish `TRIGGER`（debounce 2 秒）。
 
 ---
 
@@ -128,15 +126,17 @@
 |---|---|
 | **第 1 週（已完成）** | 申請／接線說明 R2、Firebase、EMQX；Next.js 骨架；資料模型；Rules；路由殼層；R2／MQTT stub |
 | **第 2 週（已完成）** | 組長評分／拍照／壓縮上傳 PWA；大廳／班級綁 Firestore＋本機 fallback |
-| **第 3 週** | MQTT WebSocket 即時廣播；選配 ESP32 按鈕與校園 Wi-Fi 測試 |
+| **第 3 週** | MQTT WebSocket **軟體**即時廣播（大廳／看板訂閱）；**ESP32 門鈕暫緩** |
 | **第 4 週** | 3 班實測、銷案演練、QR Code 推廣上線 |
+
+> ESP32 走廊按鈕為選配，硬體採購與校園 Wi-Fi 測試延後；不影響網頁評分／相簿／留言／銷案。
 
 ---
 
 ## 八、衛生組長日常 SOP（上線後）
 
 1. 手機開啟 PWA（加入主畫面）並登入 admin
-2. 走到班級門口按 MQTT 按鈕（或 App 內選班）
+2. App 內選班（ESP32 門鈕暫緩；恢復後可按門口按鈕自動切班）
 3. 發現缺失 → 拍照 → 自動壓縮上傳 → 發布
 4. 約 0.5 秒內：大廳與該班主頁更新；衛生股長可留言上傳改善照片銷案
 
@@ -148,5 +148,6 @@
 - [ ] Firebase Console 貼上 `firestore.rules`，建立組長帳號與 `users/{uid}` role=admin
 - [ ] `npm install` → `npm run dev`
 - [ ] 確認大廳／班級／看板／巡檢／登入可開
-- [ ] 第 2 週：實作壓縮上傳與真實 Firestore 寫入
-- [ ] 第 3 週：接 EMQX 真實 publish／subscribe
+- [x] 第 2 週：實作壓縮上傳與真實 Firestore 寫入
+- [ ] 第 3 週：接 EMQX 真實 publish／subscribe（不含 ESP32）
+- [x] Firestore 讀取防護：`limit`＋前端 TTL 快取

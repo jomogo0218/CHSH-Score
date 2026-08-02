@@ -21,6 +21,11 @@ import type {
   UserDoc,
 } from "@/lib/types";
 
+/** 大廳／看板預設最多讀取筆數（控 Firestore 讀取） */
+export const LATEST_INSPECTIONS_LIMIT = 30;
+/** 班級頁近期巡檢上限 */
+export const CLASS_INSPECTIONS_LIMIT = 10;
+
 function requireDb() {
   const db = getFirestoreDb();
   if (!db) throw new Error("Firestore 尚未設定");
@@ -36,26 +41,14 @@ export async function fetchClass(classId: string): Promise<ClassDoc | null> {
 
 export async function fetchInspectionsByClass(
   classId: string,
-): Promise<InspectionDoc[]> {
-  const db = requireDb();
-  const q = query(
-    collection(db, "inspections"),
-    where("class_id", "==", classId),
-  );
-  const snap = await getDocs(q);
-  return snap.docs
-    .map((d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc)
-    .sort((a, b) => b.date.localeCompare(a.date));
-}
-
-export async function fetchLatestInspections(
-  max = 20,
+  max = CLASS_INSPECTIONS_LIMIT,
 ): Promise<InspectionDoc[]> {
   const db = requireDb();
   try {
     const q = query(
       collection(db, "inspections"),
-      orderBy("created_at", "desc"),
+      where("class_id", "==", classId),
+      orderBy("date", "desc"),
       limit(max),
     );
     const snap = await getDocs(q);
@@ -63,12 +56,33 @@ export async function fetchLatestInspections(
       (d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc,
     );
   } catch {
-    const snap = await getDocs(collection(db, "inspections"));
+    // 缺複合索引時：仍限制回傳筆數，絕不掃全表
+    const q = query(
+      collection(db, "inspections"),
+      where("class_id", "==", classId),
+      limit(Math.min(max * 3, 40)),
+    );
+    const snap = await getDocs(q);
     return snap.docs
       .map((d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc)
-      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, max);
   }
+}
+
+export async function fetchLatestInspections(
+  max = LATEST_INSPECTIONS_LIMIT,
+): Promise<InspectionDoc[]> {
+  const db = requireDb();
+  const q = query(
+    collection(db, "inspections"),
+    orderBy("created_at", "desc"),
+    limit(max),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(
+    (d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc,
+  );
 }
 
 export async function fetchInspectionItems(
@@ -78,6 +92,7 @@ export async function fetchInspectionItems(
   const q = query(
     collection(db, "inspection_items"),
     where("inspection_id", "==", inspectionId),
+    limit(20),
   );
   const snap = await getDocs(q);
   return snap.docs.map(
@@ -92,6 +107,7 @@ export async function fetchComments(
   const q = query(
     collection(db, "comments"),
     where("inspection_id", "==", inspectionId),
+    limit(50),
   );
   const snap = await getDocs(q);
   return snap.docs.map(

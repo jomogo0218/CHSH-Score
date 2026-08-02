@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ClassDirectory } from "@/components/ClassDirectory";
 import { HallFeed, TopBoard } from "@/components/HallFeed";
+import { FETCH_TTL_MS, withTtlCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { fetchLatestInspections } from "@/lib/firebase/firestore";
 import { getLocalInspections } from "@/lib/local/store";
@@ -37,9 +38,16 @@ export function HallClient() {
     async function load() {
       const local = getLocalInspections();
       let remote: InspectionDoc[] = [];
+      let fromCache = false;
       if (isFirebaseConfigured()) {
         try {
-          remote = await fetchLatestInspections(30);
+          const result = await withTtlCache(
+            "hall:latest",
+            () => fetchLatestInspections(30),
+            FETCH_TTL_MS,
+          );
+          remote = result.data;
+          fromCache = result.fromCache;
         } catch {
           // keep demo/local
         }
@@ -47,8 +55,9 @@ export function HallClient() {
       if (cancelled) return;
       const merged = mergeFeed(remote, local, getLatestFeed());
       setFeed(merged);
-      if (remote.length) setSource("firestore");
-      else if (local.length) setSource("local");
+      if (remote.length) {
+        setSource(fromCache ? "firestore(cache)" : "firestore");
+      } else if (local.length) setSource("local");
       else setSource("demo");
     }
 
@@ -79,17 +88,12 @@ export function HallClient() {
           相簿、網誌與留言互動，取代硬邦邦的扣分單。今日巡檢動態即時上牆。
         </p>
         <p className="text-xs text-muted">
-          資料來源：
-          {source === "firestore"
-            ? "Firestore + 本機"
-            : source === "local"
-              ? "本機發布紀錄 + demo"
-              : "demo seed（設定 Firebase 後可讀雲端）"}
+          資料來源：{source}（{FETCH_TTL_MS / 1000} 秒內重整沿用快取）
         </p>
       </section>
 
       <TopBoard inspections={topBoard} />
-      <HallFeed items={feed} />
+      <HallFeed items={feed.slice(0, 12)} />
       <ClassDirectory classes={allClasses} />
     </div>
   );

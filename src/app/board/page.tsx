@@ -1,6 +1,5 @@
-import { LiveBoard } from "@/components/LiveBoard";
-import { getLatestFeed } from "@/lib/seed/demo-data";
+import { BoardClient } from "@/components/BoardClient";
 
 export default function BoardPage() {
-  return <LiveBoard items={getLatestFeed()} />;
+  return <BoardClient />;
 }

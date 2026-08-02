@@ -13,7 +13,7 @@ export function LiveBoard({ items }: { items: InspectionDoc[] }) {
           校園環境即時看板
         </h1>
         <p className="mt-2 text-muted">
-          第 3 週串接 MQTT `school/clean/live_feed` 後 0 秒更新
+          已接 Firestore（45 秒快取）；MQTT 即時廣播串接後可接近 0 秒更新
         </p>
       </header>
 
