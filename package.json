@@ -1,6 +1,6 @@
 {
   "name": "school-clean-system",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -30,5 +30,5 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "description": "校園智慧環境評分與相簿系統（無名小站風）"
+  "description": "嘉華體衛組環境評分（巡察佐證／改善回報／評分輔助）"
 }

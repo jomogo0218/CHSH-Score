@@ -1,8 +1,10 @@
-# 校園智慧環境評分與相簿系統 — 詳細部署規劃書
+# 嘉華體衛組環境評分 — 詳細部署規劃書
 
-專為體育衛生組長量身打造的「全校 32 班智慧校園環境評分與照片紀錄系統（無名小站風）」。
+專為體育衛生組長打造的「全校 32 班巡察佐證／改善回報／評分輔助」系統。
 
-考量：單人管理（組長一人巡檢上傳）、全校 32 班接收、極速巡檢（MQTT 按鈕）、零／極低營運成本。
+考量：單人管理（組長巡檢上傳）、全校 32 班接收、極速巡檢（MQTT 選配）、零／極低營運成本。
+
+版本紀錄見根目錄 [`CHANGELOG.md`](../CHANGELOG.md)。
 
 ---
 
@@ -32,7 +34,7 @@
         ▼                       ▼                       ▼
 ┌──────────────┐        ┌──────────────┐        ┌──────────────┐
 │ 全校 32 班   │        │ 川堂/大廳     │        │ 組長 App 介面 │
-│ 班級無名小站 │        │ 實時電子看板 │        │ (快速評分)   │
+│ 班級專屬頁面 │        │ 實時電子看板 │        │ (快速評分)   │
 └──────────────┘        └──────────────┘        └──────────────┘
 ```
 
@@ -76,11 +78,11 @@
 ### 組長端上傳流程（第 2 週實作）
 
 1. 前端 `browser-image-compression` 壓至 ≤ 300KB（最高 1920×1080 JPEG）
-2. `POST /api/upload-r2` 上傳 Cloudflare R2
-3. 寫入 Firebase Firestore
-4. MQTT publish 至 `live_feed` 與 `class/{classId}`
+2. `POST /api/upload-r2` 上傳 Cloudflare R2（**需登入**）
+3. 寫入 Firebase Firestore（日期為台灣時區；每項目可多張照片）
+4. MQTT publish 至 `live_feed` 與 `class/{classId}`（需登入；未設定 MQTT 則 stub）
 
-容量粗估：32 班 × 4 張/天 × 0.3 MB ≈ 38.4 MB/天；每月約 0.77 GB；R2 免費 10 GB 可撐近一學年。
+容量粗估：32 班 × 每日多張 × 0.3 MB；請依實際張數觀察 R2 用量（免費約 10 GB）。
 
 ---
 
@@ -99,24 +101,28 @@
 | Collection | Doc ID | 說明 |
 |---|---|---|
 | `classes` | `class_id` | 年級、班名、導師、大頭貼、橫幅 |
-| `inspections` | `{date}_{classId}` | 當日總分、網誌、狀態 |
-| `inspection_items` | auto-id | 區域扣分、照片 URL |
+| `inspections` | `{date}_{classId}` | 當日總分、說明、狀態（台灣日期） |
+| `inspection_items` | auto-id | 區域扣分、照片 URL（同一項目多張＝多筆） |
 | `comments` | auto-id | 留言／改善回覆照片 |
-| `users` | Auth uid | `role: admin` 等 |
+| `users` | Auth uid | `role`、`display_name`、選填 `class_id` |
 
-狀態：`pass`｜`pending_fix`｜`fixed`
+狀態：`pass`｜`pending_fix`｜`fixed`  
+（只放佐證、未標記缺失時通常為 `pass`，方便班級先改善。）
 
-權限原則：全校可讀；組長（`users/{uid}.role == admin`）可寫巡檢。留言銷案：同班 `class_health_officer`／`teacher` 或 admin 可建立 comments，並可將巡檢 `status` 更新為 `fixed`。
+權限原則：全校可讀；組長（`users/{uid}.role == admin`）可寫巡檢。  
+`users` **不可自建**；導師／衛生股長由 admin 建立並指定 `class_id`。  
+留言銷案：同班 `class_health_officer`／`teacher` 或 admin；`author_role` 須與 users 文件一致。
 
 ---
 
-## 六、功能模組（無名小站風）
+## 六、功能模組
 
-1. **校園大廳 `/`**：今日優良榜、最新巡檢動態牆、年級班級名冊
-2. **班級主頁 `/classes/[classId]`**：Banner、相簿、網誌、留言板
-3. **川堂看板 `/board`**：大字分數／最新照片（之後接 MQTT）
-4. **組長工具 `/inspect`**：快速選班評分（之後接壓縮上傳）
-5. **登入 `/login`**：組長 Email／密碼
+1. **校園大廳 `/`**：今日優良榜、最新巡察、年級班級名冊（正式環境不混 demo）
+2. **班級主頁 `/classes/[classId]`**：Banner、相簿、說明、改善回報、QR
+3. **川堂看板 `/board`**：最新分數／狀態
+4. **組長工具 `/inspect`**：選班、多圖佐證、可選扣分後發布
+5. **QR 推廣 `/qr`**：班級／巡察連結
+6. **登入 `/login`**：組長 Email／密碼
 
 ---
 
@@ -124,30 +130,32 @@
 
 | 週次 | 內容 |
 |---|---|
-| **第 1 週（已完成）** | 申請／接線說明 R2、Firebase、EMQX；Next.js 骨架；資料模型；Rules；路由殼層；R2／MQTT stub |
-| **第 2 週（已完成）** | 組長評分／拍照／壓縮上傳 PWA；大廳／班級綁 Firestore＋本機 fallback |
-| **第 3 週** | MQTT WebSocket **軟體**即時廣播（大廳／看板訂閱）；**ESP32 門鈕暫緩** |
-| **第 4 週** | 3 班實測、銷案演練、QR Code 推廣上線 |
+| **第 1 週（已完成）** | R2、Firebase、EMQX 說明；骨架；模型；Rules；路由 |
+| **第 2 週（已完成）** | 評分／拍照／壓縮上傳 PWA；真實 Firestore |
+| **第 3 週（軟體完成）** | MQTT 軟體即時；**ESP32 門鈕暫緩** |
+| **第 4 週** | 實測、銷案演練、QR 推廣 |
 
-> ESP32 走廊按鈕為選配，硬體採購與校園 Wi-Fi 測試延後；不影響網頁評分／相簿／留言／銷案。
+> ESP32 為選配，暫緩不影響網頁評分／相簿／留言／銷案。
 
 ---
 
 ## 八、衛生組長日常 SOP（上線後）
 
-1. 手機開啟 PWA（加入主畫面）並登入 admin
-2. App 內選班（ESP32 門鈕暫緩；恢復後可按門口按鈕自動切班）
-3. 發現缺失 → 拍照 → 自動壓縮上傳 → 發布
-4. 約 0.5 秒內：大廳與該班主頁更新；衛生股長可留言上傳改善照片銷案
+1. 手機開啟 PWA 並登入 admin
+2. 選班 → 各項目「加照片」（可多張；預設不扣分）
+3. 需要扣分時再按「標記缺失」→ 發布
+4. 班級看照片改善後，導師／衛生股長登入於班級頁回報銷案
 
 ---
 
 ## 九、接手檢查清單
 
-- [ ] 複製 `.env.example` → `.env.local` 並填入三雲金鑰（見 `cloud-setup.md`）
-- [ ] Firebase Console 貼上 `firestore.rules`，建立組長帳號與 `users/{uid}` role=admin
-- [ ] `npm install` → `npm run dev`
-- [ ] 確認大廳／班級／看板／巡檢／登入可開
-- [x] 第 2 週：實作壓縮上傳與真實 Firestore 寫入
-- [x] 第 3 週：接 EMQX 真實 publish／subscribe（不含 ESP32）
-- [x] Firestore 讀取防護：`limit`＋前端 TTL 快取
+- [ ] 複製 `.env.example` → `.env.local` 並填入金鑰（見 `cloud-setup.md`）
+- [ ] Firebase Console **發布**最新 `firestore.rules`
+- [ ] 建立組長 `users/{uid}` `role=admin`；導師帳號由 admin 代建
+- [ ] Authorized domains 含 `chsh-score.vercel.app`
+- [ ] `npm install` → `npm run dev`；正式站確認登入後可上傳
+- [x] 壓縮上傳與 Firestore 寫入
+- [x] MQTT 軟體 publish／subscribe（不含 ESP32）
+- [x] 上傳 API 登入驗證、大廳去 demo、台灣時區日期
+- [ ] 參考 [`CHANGELOG.md`](../CHANGELOG.md) 對照目前版本
