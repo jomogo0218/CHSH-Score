@@ -4,6 +4,13 @@
 
 遠端倉庫：[jomogo0218/CHSH-Score](https://github.com/jomogo0218/CHSH-Score)
 
+## 線上網址（Vercel）
+
+- 正式站：https://chsh-score.vercel.app
+- 部署面板：https://vercel.com/terry-s-projects11/chsh-score
+
+> 尚未串接 GitHub 自動部署。之後若要「push 即上線」，請在 Vercel 帳號加上 GitHub Login Connection，再把專案連到 `jomogo0218/CHSH-Score`。
+
 ## 規劃文件（接手必讀）
 
 | 文件 | 說明 |
