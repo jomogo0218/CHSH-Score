@@ -32,6 +32,12 @@ export function ClassReminders() {
             體衛組分類重點。詳細圖示請開啟完整寶典。
           </p>
         </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/docs/sorting-training.png"
+          alt="由衛生組精心規劃的分類特訓班，保證您不出3日必成為轟動嘉華的分類高手"
+          className="w-full max-w-md rounded-lg border border-line bg-white"
+        />
         <ul className="grid gap-2">
           {RECYCLE_REMINDERS.map((item) => (
             <li
