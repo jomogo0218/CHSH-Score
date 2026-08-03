@@ -49,11 +49,8 @@ function liveToInspection(payload: LiveFeedPayload): InspectionDoc {
 }
 
 export function HallClient() {
-  const firebaseOn = isFirebaseConfigured();
-  const [feed, setFeed] = useState<InspectionDoc[]>(() =>
-    firebaseOn ? [] : getLatestFeed(),
-  );
-  const [source, setSource] = useState(firebaseOn ? "loading" : "demo");
+  const [feed, setFeed] = useState<InspectionDoc[]>(() => getLatestFeed());
+  const [source, setSource] = useState("demo（預覽）");
   const [liveHint, setLiveHint] = useState<string | null>(null);
 
   useLiveFeedSubscription((payload) => {
@@ -92,14 +89,15 @@ export function HallClient() {
         }
       }
       if (cancelled) return;
-      // Firebase 已設定時不混 demo，避免正式大廳出現假班級
-      const demo = configured ? [] : getLatestFeed();
+      // 雲端尚無真實巡察時顯示示範資料，方便預覽「運作一段時間」的畫面；有真實資料就不混入
+      const demo =
+        remote.length === 0 && local.length === 0 ? getLatestFeed() : [];
       const merged = mergeFeed(remote, local, demo);
       setFeed(merged);
       if (remote.length) {
         setSource(fromCache ? "firestore(cache)" : "firestore");
       } else if (local.length) setSource("local");
-      else setSource(configured ? "empty" : "demo");
+      else setSource(demo.length ? "demo（預覽）" : "empty");
     }
 
     void load();
@@ -119,9 +117,9 @@ export function HallClient() {
   const topBoard =
     top.length > 0
       ? top
-      : firebaseOn
-        ? []
-        : getTodayTopClasses(3);
+      : feed.length === 0
+        ? getTodayTopClasses(3)
+        : [];
 
   return (
     <div className="space-y-3 sm:space-y-4">
