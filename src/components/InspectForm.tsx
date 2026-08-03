@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CLASS_ROSTER, GRADE_LABELS, GRADE_ORDER, INSPECTION_CATEGORIES } from "@/lib/constants";
+import { CLASS_ROSTER, INSPECTION_CATEGORIES } from "@/lib/constants";
+import { ClassRosterPicker } from "@/components/ClassRosterPicker";
 import { invalidateCache } from "@/lib/cache/ttl";
 import {
   getFirebaseAuth,
@@ -393,30 +394,10 @@ export function InspectForm({ classId }: { classId?: string }) {
 
       <section className="panel p-3 sm:p-4">
         <h2 className="mb-2 text-sm font-semibold text-ink">選擇班級</h2>
-        <div className="max-h-56 space-y-2.5 overflow-y-auto">
-          {GRADE_ORDER.map((grade) => (
-            <div key={grade}>
-              <p className="mb-1 text-[11px] font-semibold text-muted">
-                {GRADE_LABELS[grade]}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {CLASS_ROSTER.filter((c) => c.grade === grade).map((c) => (
-                  <Link
-                    key={c.class_id}
-                    href={`/inspect/${c.class_id}`}
-                    className={`rounded-md border px-2.5 py-1 text-xs transition sm:text-sm ${
-                      c.class_id === classId
-                        ? "border-mint bg-mint text-white"
-                        : "border-line bg-paper hover:bg-leaf/15"
-                    }`}
-                  >
-                    {c.class_name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <p className="mb-2 text-[11px] text-muted">
+          國中為班號；高中為忠孝仁愛信。共 {CLASS_ROSTER.length} 班。
+        </p>
+        <ClassRosterPicker selectedId={classId} />
       </section>
 
       {classId ? (
