@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CLASS_ROSTER, INSPECTION_CATEGORIES } from "@/lib/constants";
+import { CLASS_ROSTER, GRADE_LABELS, GRADE_ORDER, INSPECTION_CATEGORIES } from "@/lib/constants";
 
 export function InspectShell({ classId }: { classId?: string }) {
   const selected = CLASS_ROSTER.find((c) => c.class_id === classId);
@@ -27,19 +27,28 @@ export function InspectShell({ classId }: { classId?: string }) {
 
       <section className="panel p-5 sm:p-6">
         <h2 className="mb-3 font-semibold text-ink">選擇班級</h2>
-        <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
-          {CLASS_ROSTER.map((c) => (
-            <Link
-              key={c.class_id}
-              href={`/inspect/${c.class_id}`}
-              className={`rounded-lg border px-3 py-1.5 text-sm transition ${
-                c.class_id === classId
-                  ? "border-mint bg-mint text-white"
-                  : "border-line bg-paper hover:bg-leaf/15"
-              }`}
-            >
-              {c.class_name}
-            </Link>
+        <div className="max-h-56 space-y-2.5 overflow-y-auto">
+          {GRADE_ORDER.map((grade) => (
+            <div key={grade}>
+              <p className="mb-1 text-xs font-semibold text-muted">
+                {GRADE_LABELS[grade]}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {CLASS_ROSTER.filter((c) => c.grade === grade).map((c) => (
+                  <Link
+                    key={c.class_id}
+                    href={`/inspect/${c.class_id}`}
+                    className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                      c.class_id === classId
+                        ? "border-mint bg-mint text-white"
+                        : "border-line bg-paper hover:bg-leaf/15"
+                    }`}
+                  >
+                    {c.class_name}
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </section>

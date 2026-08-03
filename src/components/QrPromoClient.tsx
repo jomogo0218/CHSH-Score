@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { QrImage } from "@/components/ClassQrPanel";
-import { CLASS_ROSTER, GRADE_LABELS } from "@/lib/constants";
+import { CLASS_ROSTER, GRADE_LABELS, GRADE_ORDER } from "@/lib/constants";
 
 export function QrPromoClient() {
   const [origin, setOrigin] = useState("");
@@ -46,7 +46,7 @@ export function QrPromoClient() {
         >
           全部
         </button>
-        {[1, 2, 3].map((g) => (
+        {GRADE_ORDER.map((g) => (
           <button
             key={g}
             type="button"

@@ -40,9 +40,9 @@
 
 ```json
 {
-  "display_name": "一年1班導師",
+  "display_name": "國一1班導師",
   "role": "teacher",
-  "class_id": "101"
+  "class_id": "j101"
 }
 ```
 

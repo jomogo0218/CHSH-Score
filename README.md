@@ -1,6 +1,6 @@
 # 嘉華體衛組環境評分（CHSH-Score）
 
-全校 32 班巡察佐證、改善回報與評分輔助系統。
+全校國高中巡察佐證、改善回報與評分輔助系統（國一～三、高一～三忠孝仁愛信）。
 
 遠端倉庫：[jomogo0218/CHSH-Score](https://github.com/jomogo0218/CHSH-Score)  
 版本紀錄：[`CHANGELOG.md`](CHANGELOG.md)

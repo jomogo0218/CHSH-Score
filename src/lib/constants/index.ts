@@ -4,42 +4,67 @@ export const SITE_NAME = "嘉華體衛組環境評分";
 export const SITE_SHORT_NAME = "環境評分";
 export const SITE_TAGLINE = "巡察佐證 · 改善回報 · 評分輔助";
 
-/** 高中 32 班名冊：高一 11、高二 11、高三 10 */
-export const CLASS_ROSTER: ReadonlyArray<{
+/** 高中班級德目（忠孝仁愛信） */
+const SENIOR_STREAMS = [
+  { id: "zhong", name: "忠" },
+  { id: "xiao", name: "孝" },
+  { id: "ren", name: "仁" },
+  { id: "ai", name: "愛" },
+  { id: "xin", name: "信" },
+] as const;
+
+type RosterEntry = {
   class_id: string;
   grade: number;
   class_name: string;
-}> = [
-  ...Array.from({ length: 11 }, (_, i) => {
+};
+
+function juniorClasses(
+  grade: number,
+  label: string,
+  count: number,
+): RosterEntry[] {
+  return Array.from({ length: count }, (_, i) => {
     const n = i + 1;
     return {
-      class_id: `1${String(n).padStart(2, "0")}`,
-      grade: 1,
-      class_name: `一年${n}班`,
+      class_id: `j${grade}${String(n).padStart(2, "0")}`,
+      grade,
+      class_name: `${label}${n}班`,
     };
-  }),
-  ...Array.from({ length: 11 }, (_, i) => {
-    const n = i + 1;
-    return {
-      class_id: `2${String(n).padStart(2, "0")}`,
-      grade: 2,
-      class_name: `二年${n}班`,
-    };
-  }),
-  ...Array.from({ length: 10 }, (_, i) => {
-    const n = i + 1;
-    return {
-      class_id: `3${String(n).padStart(2, "0")}`,
-      grade: 3,
-      class_name: `三年${n}班`,
-    };
-  }),
+  });
+}
+
+function seniorClasses(grade: number, label: string): RosterEntry[] {
+  return SENIOR_STREAMS.map((s) => ({
+    class_id: `s${grade}${s.id}`,
+    grade,
+    class_name: `${label}${s.name}`,
+  }));
+}
+
+/**
+ * 嘉華班級名冊
+ * 國一 1～5、國二 1～6、國三 1～5；高一～高三：忠孝仁愛信
+ * grade：1=國一 … 3=國三，4=高一 … 6=高三
+ */
+export const CLASS_ROSTER: ReadonlyArray<RosterEntry> = [
+  ...juniorClasses(1, "國一", 5),
+  ...juniorClasses(2, "國二", 6),
+  ...juniorClasses(3, "國三", 5),
+  ...seniorClasses(4, "高一"),
+  ...seniorClasses(5, "高二"),
+  ...seniorClasses(6, "高三"),
 ];
 
+export const GRADE_ORDER = [1, 2, 3, 4, 5, 6] as const;
+
 export const GRADE_LABELS: Record<number, string> = {
-  1: "高一",
-  2: "高二",
-  3: "高三",
+  1: "國一",
+  2: "國二",
+  3: "國三",
+  4: "高一",
+  5: "高二",
+  6: "高三",
 };
 
 export const INSPECTION_CATEGORIES = [

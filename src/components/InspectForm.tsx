@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CLASS_ROSTER, INSPECTION_CATEGORIES } from "@/lib/constants";
+import { CLASS_ROSTER, GRADE_LABELS, GRADE_ORDER, INSPECTION_CATEGORIES } from "@/lib/constants";
 import { invalidateCache } from "@/lib/cache/ttl";
 import {
   getFirebaseAuth,
@@ -393,19 +393,28 @@ export function InspectForm({ classId }: { classId?: string }) {
 
       <section className="panel p-3 sm:p-4">
         <h2 className="mb-2 text-sm font-semibold text-ink">選擇班級</h2>
-        <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
-          {CLASS_ROSTER.map((c) => (
-            <Link
-              key={c.class_id}
-              href={`/inspect/${c.class_id}`}
-              className={`rounded-md border px-2.5 py-1 text-xs transition sm:text-sm ${
-                c.class_id === classId
-                  ? "border-mint bg-mint text-white"
-                  : "border-line bg-paper hover:bg-leaf/15"
-              }`}
-            >
-              {c.class_name}
-            </Link>
+        <div className="max-h-56 space-y-2.5 overflow-y-auto">
+          {GRADE_ORDER.map((grade) => (
+            <div key={grade}>
+              <p className="mb-1 text-[11px] font-semibold text-muted">
+                {GRADE_LABELS[grade]}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {CLASS_ROSTER.filter((c) => c.grade === grade).map((c) => (
+                  <Link
+                    key={c.class_id}
+                    href={`/inspect/${c.class_id}`}
+                    className={`rounded-md border px-2.5 py-1 text-xs transition sm:text-sm ${
+                      c.class_id === classId
+                        ? "border-mint bg-mint text-white"
+                        : "border-line bg-paper hover:bg-leaf/15"
+                    }`}
+                  >
+                    {c.class_name}
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </section>

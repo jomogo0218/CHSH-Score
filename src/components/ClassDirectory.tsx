@@ -1,17 +1,15 @@
 import Link from "next/link";
 import type { ClassDoc } from "@/lib/types";
-import { GRADE_LABELS } from "@/lib/constants";
+import { GRADE_LABELS, GRADE_ORDER } from "@/lib/constants";
 
 export function ClassDirectory({ classes }: { classes: ClassDoc[] }) {
-  const grades = [1, 2, 3] as const;
-
   return (
     <section className="panel animate-rise p-3 sm:p-4">
       <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-mint">
         班級名冊
       </h2>
       <div className="mt-3 space-y-3">
-        {grades.map((grade) => (
+        {GRADE_ORDER.map((grade) => (
           <div key={grade}>
             <h3 className="mb-1.5 text-xs font-semibold text-muted">
               {GRADE_LABELS[grade]}
