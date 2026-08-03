@@ -487,7 +487,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                               note: e.target.value,
                             })
                           }
-                          placeholder="例如：排水孔有落葉積水"
+                          placeholder="例如：教室掃具未歸位"
                           className="mt-1 w-full rounded-md border border-line px-2 py-1"
                         />
                       </label>

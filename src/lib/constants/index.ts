@@ -43,12 +43,9 @@ export const GRADE_LABELS: Record<number, string> = {
 };
 
 export const INSPECTION_CATEGORIES = [
-  "黑板",
-  "掃具",
-  "走廊",
-  "洗手台",
-  "教室地板",
-  "垃圾桶",
+  "教室",
+  "外掃",
+  "廁所",
 ] as const;
 
 export const STATUS_LABELS: Record<InspectionStatus, string> = {
