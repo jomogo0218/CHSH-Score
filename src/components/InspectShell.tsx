@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { CLASS_ROSTER, INSPECTION_CATEGORIES } from "@/lib/constants";
+import { CLASS_ROSTER } from "@/lib/constants";
 import { ClassRosterPicker } from "@/components/ClassRosterPicker";
+import { SCORING_RUBRIC } from "@/lib/constants/scoring-rubric";
 
 export function InspectShell({ classId }: { classId?: string }) {
   const selected = CLASS_ROSTER.find((c) => c.class_id === classId);
@@ -12,7 +13,7 @@ export function InspectShell({ classId }: { classId?: string }) {
           組長快速評分
         </h1>
         <p className="mt-1 text-sm text-muted">
-          請選班後進入正式評分表單。
+          請選班後依衛生組標準逐項加減分。
         </p>
         {selected ? (
           <p className="mt-2 rounded-lg bg-leaf/15 px-3 py-2 text-sm font-semibold text-ink">
@@ -29,15 +30,17 @@ export function InspectShell({ classId }: { classId?: string }) {
       </section>
 
       <section className="panel p-3 sm:p-4 opacity-90">
-        <h2 className="mb-2 text-sm font-semibold text-ink">評分項目</h2>
+        <h2 className="mb-2 text-sm font-semibold text-ink">評分大項</h2>
         <ul className="grid gap-2 sm:grid-cols-3">
-          {INSPECTION_CATEGORIES.map((cat) => (
+          {SCORING_RUBRIC.map((section) => (
             <li
-              key={cat}
-              className="flex items-center justify-between rounded-lg border border-dashed border-line bg-paper/70 px-3 py-2 text-sm"
+              key={section.id}
+              className="rounded-lg border border-dashed border-line bg-paper/70 px-3 py-2 text-sm"
             >
-              <span>{cat}</span>
-              <span className="text-xs text-muted">滿分</span>
+              <p className="font-semibold text-ink">{section.title}</p>
+              <p className="text-xs text-muted">
+                {section.items.length} 個單項
+              </p>
             </li>
           ))}
         </ul>

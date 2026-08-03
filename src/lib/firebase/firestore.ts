@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { invalidateCache } from "@/lib/cache/ttl";
 import { getFirestoreDb, isFirebaseConfigured } from "@/lib/firebase/client";
+import { computeInspectionTotal } from "@/lib/constants/scoring-rubric";
 import { taiwanDateString } from "@/lib/time/taiwan";
 import type {
   ClassDoc,
@@ -148,7 +149,10 @@ export interface PublishInspectionInput {
   summaryBlog: string;
   categories: Array<{
     category: string;
+    /** 可為正分或負分；欄位名沿用 score_deduction */
     score_deduction: number;
+    /** 是否已點選標準（含選 0 分） */
+    scored?: boolean;
     note: string;
     /** 同一項目可多張；發布時拆成多筆 inspection_items */
     photo_urls?: string[];
@@ -165,13 +169,13 @@ export async function publishInspection(
   const db = requireDb();
   const date = taiwanDateString();
   const inspectionId = `${date}_${input.classId}`;
-  const deduction = input.categories.reduce(
-    (sum, c) => sum + Math.abs(Math.min(0, c.score_deduction)),
-    0,
-  );
-  const totalScore = Math.max(0, 100 - deduction);
-  const hasDeduction = deduction > 0;
-  const status: InspectionStatus = hasDeduction ? "pending_fix" : "pass";
+
+  const scoresForTotal = input.categories
+    .filter((c) => c.scored === true)
+    .map((c) => c.score_deduction);
+  const totalScore = computeInspectionTotal(scoresForTotal);
+  const hasPenalty = scoresForTotal.some((s) => s < 0);
+  const status: InspectionStatus = hasPenalty ? "pending_fix" : "pass";
   const createdAt = new Date().toISOString();
 
   const inspection: InspectionDoc = {
@@ -204,13 +208,14 @@ export async function publishInspection(
   const stamp = new Date().toTimeString().slice(0, 8);
   for (const cat of input.categories) {
     const urls = (cat.photo_urls ?? []).filter(Boolean);
-    if (cat.score_deduction === 0 && urls.length === 0 && !cat.note) continue;
+    const scored = cat.scored === true;
+    if (!scored && urls.length === 0 && !cat.note) continue;
 
     if (urls.length === 0) {
       await addDoc(collection(db, "inspection_items"), {
         inspection_id: inspectionId,
         category: cat.category,
-        score_deduction: cat.score_deduction,
+        score_deduction: scored ? cat.score_deduction : 0,
         note: cat.note,
         photo_url: "",
         photo_timestamp: stamp,
@@ -223,7 +228,7 @@ export async function publishInspection(
       await addDoc(collection(db, "inspection_items"), {
         inspection_id: inspectionId,
         category: cat.category,
-        score_deduction: i === 0 ? cat.score_deduction : 0,
+        score_deduction: i === 0 && scored ? cat.score_deduction : 0,
         note: multi
           ? `${cat.note || cat.category}（${i + 1}/${urls.length}）`
           : cat.note,

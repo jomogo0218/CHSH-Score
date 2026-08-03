@@ -6,6 +6,7 @@ import { AlbumGrid } from "@/components/AlbumGrid";
 import { BlogList } from "@/components/BlogList";
 import { ClassBanner } from "@/components/ClassBanner";
 import { ClassQrPanel } from "@/components/ClassQrPanel";
+import { ClassReminders } from "@/components/ClassReminders";
 import { Guestbook } from "@/components/Guestbook";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import {
@@ -149,6 +150,7 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       <nav className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
         {[
+          { id: "reminders", label: "提醒" },
           { id: "albums", label: "照片" },
           { id: "blogs", label: "說明" },
           { id: "guestbook", label: "回報" },
@@ -163,6 +165,13 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
           </a>
         ))}
       </nav>
+
+      <section id="reminders" className="panel scroll-mt-20 p-3 sm:p-4">
+        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
+          班級提醒
+        </h2>
+        <ClassReminders />
+      </section>
 
       <section id="albums" className="panel scroll-mt-20 p-3 sm:p-4">
         <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CLASS_ROSTER, INSPECTION_CATEGORIES, SUMMARY_PRESETS } from "@/lib/constants";
+import { CLASS_ROSTER, SUMMARY_PRESETS } from "@/lib/constants";
 import { ClassRosterPicker } from "@/components/ClassRosterPicker";
 import { invalidateCache } from "@/lib/cache/ttl";
 import {
@@ -22,6 +22,14 @@ import {
 import { saveLocalInspection } from "@/lib/local/store";
 import { publishLiveUpdate } from "@/lib/mqtt/publish";
 import { uploadInspectionPhoto } from "@/lib/r2/upload";
+import {
+  REPEAT_UNFIXED_PENALTY,
+  SCORING_RUBRIC,
+  SCORING_RUBRIC_META,
+  SCORE_BASE,
+  computeInspectionTotal,
+  formatRubricScore,
+} from "@/lib/constants/scoring-rubric";
 import { taiwanDateString } from "@/lib/time/taiwan";
 import type { InspectionDoc, InspectionStatus, UserDoc } from "@/lib/types";
 import type { User } from "firebase/auth";
@@ -33,16 +41,18 @@ type PhotoEntry = {
   compressedBytes: number;
 };
 
-type CategoryState = {
+type ItemState = {
+  itemId: string;
+  sectionId: string;
   category: string;
-  flagged: boolean;
-  deduction: number;
+  score: number | null;
+  levelLabel: string | null;
+  repeatUnfixed: boolean;
   note: string;
   photos: PhotoEntry[];
 };
 
-const DEFAULT_DEDUCTION = 5;
-const MAX_PHOTOS_PER_CATEGORY = 15;
+const MAX_PHOTOS_PER_ITEM = 8;
 
 function todayId(classId: string) {
   return `${taiwanDateString()}_${classId}`;
@@ -52,26 +62,38 @@ function newPhotoId() {
   return `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function buildInitialItems(): ItemState[] {
+  return SCORING_RUBRIC.flatMap((section) =>
+    section.items.map((item) => ({
+      itemId: item.id,
+      sectionId: section.id,
+      category: item.title,
+      score: null,
+      levelLabel: null,
+      repeatUnfixed: false,
+      note: "",
+      photos: [],
+    })),
+  );
+}
+
+function effectiveScore(item: ItemState): number | null {
+  if (item.repeatUnfixed) return REPEAT_UNFIXED_PENALTY;
+  return item.score;
+}
+
 export function InspectForm({ classId }: { classId?: string }) {
   const selected = CLASS_ROSTER.find((c) => c.class_id === classId);
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [summary, setSummary] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserDoc | null | undefined>(undefined);
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<CategoryState[]>(() =>
-    INSPECTION_CATEGORIES.map((category) => ({
-      category,
-      flagged: false,
-      deduction: DEFAULT_DEDUCTION,
-      note: "",
-      photos: [],
-    })),
-  );
+  const [items, setItems] = useState<ItemState[]>(buildInitialItems);
 
   useEffect(() => {
     return subscribeAuth((next) => {
@@ -86,42 +108,61 @@ export function InspectForm({ classId }: { classId?: string }) {
         .then((p) => setProfile(p))
         .catch((err) => {
           setProfile(null);
-          setProfileError(err instanceof Error ? err.message : "讀取 profile 失敗");
+          setProfileError(
+            err instanceof Error ? err.message : "讀取 profile 失敗",
+          );
         });
     });
   }, []);
 
   const isAdmin = profile?.role === "admin";
 
-  const totalScore = useMemo(() => {
-    const deduction = categories
-      .filter((c) => c.flagged)
-      .reduce((sum, c) => sum + Math.abs(c.deduction), 0);
-    return Math.max(0, 100 - deduction);
-  }, [categories]);
+  const scoredItems = useMemo(
+    () => items.filter((i) => effectiveScore(i) !== null),
+    [items],
+  );
 
-  const photoCount = categories.reduce((sum, c) => sum + c.photos.length, 0);
-
-  function toggleCategory(category: string) {
-    setCategories((prev) =>
-      prev.map((c) =>
-        c.category === category ? { ...c, flagged: !c.flagged } : c,
+  const totalScore = useMemo(
+    () =>
+      computeInspectionTotal(
+        scoredItems.map((i) => effectiveScore(i) as number),
       ),
+    [scoredItems],
+  );
+
+  const scoreDelta = totalScore - SCORE_BASE;
+  const photoCount = items.reduce((sum, i) => sum + i.photos.length, 0);
+
+  function updateItem(itemId: string, patch: Partial<ItemState>) {
+    setItems((prev) =>
+      prev.map((i) => (i.itemId === itemId ? { ...i, ...patch } : i)),
     );
   }
 
-  function updateCategory(category: string, patch: Partial<CategoryState>) {
-    setCategories((prev) =>
-      prev.map((c) => (c.category === category ? { ...c, ...patch } : c)),
+  function selectLevel(itemId: string, score: number, label: string) {
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.itemId !== itemId) return i;
+        const same = i.score === score && i.levelLabel === label && !i.repeatUnfixed;
+        if (same) {
+          return { ...i, score: null, levelLabel: null };
+        }
+        return {
+          ...i,
+          score,
+          levelLabel: label,
+          repeatUnfixed: false,
+        };
+      }),
     );
   }
 
-  function removePhoto(category: string, photoId: string) {
-    setCategories((prev) =>
-      prev.map((c) =>
-        c.category === category
-          ? { ...c, photos: c.photos.filter((p) => p.id !== photoId) }
-          : c,
+  function removePhoto(itemId: string, photoId: string) {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.itemId === itemId
+          ? { ...i, photos: i.photos.filter((p) => p.id !== photoId) }
+          : i,
       ),
     );
   }
@@ -132,14 +173,14 @@ export function InspectForm({ classId }: { classId?: string }) {
   }
 
   async function onPickPhotos(fileList: FileList | null) {
-    if (!fileList?.length || !activeCategory || !classId) return;
-    const cat = categories.find((c) => c.category === activeCategory);
-    if (!cat) return;
+    if (!fileList?.length || !activeItemId || !classId) return;
+    const item = items.find((i) => i.itemId === activeItemId);
+    if (!item) return;
 
-    const room = MAX_PHOTOS_PER_CATEGORY - cat.photos.length;
+    const room = MAX_PHOTOS_PER_ITEM - item.photos.length;
     if (room <= 0) {
-      setMessage(`${activeCategory} 最多 ${MAX_PHOTOS_PER_CATEGORY} 張。`);
-      setActiveCategory(null);
+      setMessage(`${item.category} 最多 ${MAX_PHOTOS_PER_ITEM} 張。`);
+      setActiveItemId(null);
       clearPhotoInputs();
       return;
     }
@@ -160,25 +201,24 @@ export function InspectForm({ classId }: { classId?: string }) {
           compressedBytes: compressed.size,
         });
       }
-      setCategories((prev) =>
-        prev.map((c) => {
-          if (c.category !== activeCategory) return c;
+      setItems((prev) =>
+        prev.map((i) => {
+          if (i.itemId !== activeItemId) return i;
           return {
-            ...c,
-            // 只加照片，不自動標記缺失／扣分
-            photos: [...c.photos, ...added],
-            note: c.note || (added.length ? `${c.category}巡察佐證` : c.note),
+            ...i,
+            photos: [...i.photos, ...added],
+            note: i.note || (added.length ? `${i.category}巡察佐證` : i.note),
           };
         }),
       );
       setMessage(
-        `${activeCategory} 已加 ${added.length} 張（共 ${(cat.photos.length + added.length)} 張）。需扣分時請再按「標記缺失」。`,
+        `${item.category} 已加 ${added.length} 張（共 ${item.photos.length + added.length} 張）。請再點選加減分標準。`,
       );
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "上傳失敗");
     } finally {
       setBusy(false);
-      setActiveCategory(null);
+      setActiveItemId(null);
       clearPhotoInputs();
     }
   }
@@ -188,8 +228,8 @@ export function InspectForm({ classId }: { classId?: string }) {
       setMessage("請先選擇班級");
       return;
     }
-    if (photoCount === 0 && !categories.some((c) => c.flagged)) {
-      setMessage("請先至少拍一張照片或標記一個缺失項目，再發布。");
+    if (scoredItems.length === 0 && photoCount === 0) {
+      setMessage("請先至少點選一項評分標準，或拍一張照片後再發布。");
       return;
     }
 
@@ -200,7 +240,11 @@ export function InspectForm({ classId }: { classId?: string }) {
       );
       return;
     }
-    if (isFirebaseConfigured() && auth?.currentUser && profile?.role !== "admin") {
+    if (
+      isFirebaseConfigured() &&
+      auth?.currentUser &&
+      profile?.role !== "admin"
+    ) {
       setMessage(
         `已登入但不是 admin（目前 role=${profile?.role ?? "（沒有 users 文件）"}）。請在 Firestore 建立 users/${auth.currentUser.uid}，欄位 role=admin。`,
       );
@@ -217,40 +261,55 @@ export function InspectForm({ classId }: { classId?: string }) {
           if (!ok) return;
         }
       } catch {
-        // 查詢失敗仍允許發布；覆寫由後端 setDoc 處理
+        // ignore
       }
     }
 
     setBusy(true);
     setMessage("正在寫入班級相簿…");
     try {
-      const flagged = categories.filter((c) => c.flagged);
-      const withPhotos = categories.filter((c) => c.photos.length > 0);
-      const cover =
-        withPhotos[0]?.photos[0]?.url ??
-        flagged.find((c) => c.photos[0])?.photos[0]?.url;
+      const withPhotos = items.filter((i) => i.photos.length > 0);
+      const cover = withPhotos[0]?.photos[0]?.url;
       const summaryBlog =
         summary.trim() ||
-        (flagged.length || withPhotos.length
-          ? [...flagged, ...withPhotos]
+        (scoredItems.length || withPhotos.length
+          ? [...scoredItems, ...withPhotos]
               .filter(
                 (c, i, arr) =>
-                  arr.findIndex((x) => x.category === c.category) === i,
+                  arr.findIndex((x) => x.itemId === c.itemId) === i,
               )
               .map((c) => {
-                const tag = c.flagged ? "待改善" : "佐證";
-                return `${c.category}（${tag}${c.photos.length ? ` ${c.photos.length} 張` : ""}${c.note ? `：${c.note}` : ""}）`;
+                const sc = effectiveScore(c);
+                const tag =
+                  sc === null
+                    ? "佐證"
+                    : sc < 0
+                      ? `待改善 ${formatRubricScore(sc)}`
+                      : sc > 0
+                        ? `加分 ${formatRubricScore(sc)}`
+                        : "持平";
+                return `${c.category}（${tag}${c.levelLabel ? `：${c.levelLabel}` : ""}${c.photos.length ? ` ${c.photos.length} 張` : ""}）`;
               })
               .join("；")
           : "各區整潔，維持良好。");
 
       const inspectorId = auth?.currentUser?.uid ?? "local_inspector";
-      const payloadCats = categories.map((c) => ({
-        category: c.category,
-        score_deduction: c.flagged ? -Math.abs(c.deduction) : 0,
-        note: c.note,
-        photo_urls: c.photos.map((p) => p.url),
-      }));
+      const payloadCats = items.map((c) => {
+        const sc = effectiveScore(c);
+        const scored = sc !== null;
+        const noteParts = [
+          c.repeatUnfixed ? "重複未改善" : "",
+          c.levelLabel && !c.repeatUnfixed ? c.levelLabel : "",
+          c.note,
+        ].filter(Boolean);
+        return {
+          category: c.category,
+          score_deduction: scored ? (sc as number) : 0,
+          scored,
+          note: noteParts.join("｜"),
+          photo_urls: c.photos.map((p) => p.url),
+        };
+      });
 
       let inspection: InspectionDoc;
       let wroteCloud = false;
@@ -265,15 +324,19 @@ export function InspectForm({ classId }: { classId?: string }) {
         });
         wroteCloud = true;
       } else {
-        const deduction = flagged.reduce((s, c) => s + Math.abs(c.deduction), 0);
-        const status: InspectionStatus =
-          deduction > 0 ? "pending_fix" : "pass";
+        const scores = payloadCats
+          .filter((c) => c.scored)
+          .map((c) => c.score_deduction);
+        const hasPenalty = scores.some((s) => s < 0);
+        const status: InspectionStatus = hasPenalty
+          ? "pending_fix"
+          : "pass";
         inspection = {
           inspection_id: todayId(classId),
           date: taiwanDateString(),
           class_id: classId,
           inspector_id: inspectorId,
-          total_score: Math.max(0, 100 - deduction),
+          total_score: computeInspectionTotal(scores),
           summary_blog: summaryBlog,
           status,
           cover_photo_url: cover,
@@ -282,13 +345,13 @@ export function InspectForm({ classId }: { classId?: string }) {
         const stamp = new Date().toTimeString().slice(0, 8);
         const localItems = payloadCats.flatMap((c) => {
           const urls = c.photo_urls ?? [];
-          if (c.score_deduction === 0 && urls.length === 0 && !c.note) return [];
+          if (!c.scored && urls.length === 0 && !c.note) return [];
           if (urls.length === 0) {
             return [
               {
                 inspection_id: inspection.inspection_id,
                 category: c.category,
-                score_deduction: c.score_deduction,
+                score_deduction: c.scored ? c.score_deduction : 0,
                 note: c.note,
                 photo_url: "",
                 photo_timestamp: stamp,
@@ -298,7 +361,7 @@ export function InspectForm({ classId }: { classId?: string }) {
           return urls.map((url, i) => ({
             inspection_id: inspection.inspection_id,
             category: c.category,
-            score_deduction: i === 0 ? c.score_deduction : 0,
+            score_deduction: i === 0 && c.scored ? c.score_deduction : 0,
             note:
               urls.length > 1
                 ? `${c.note || c.category}（${i + 1}/${urls.length}）`
@@ -329,8 +392,8 @@ export function InspectForm({ classId }: { classId?: string }) {
 
       const statusHint =
         inspection.status === "pass"
-          ? "狀態為合格（僅佐證、未扣分），班級可先改善。"
-          : "狀態為待改善。";
+          ? "狀態合格（無扣分項）。"
+          : "狀態為待改善（含扣分項）。";
       setMessage(
         wroteCloud
           ? `已發布到雲端：${selected.class_name} ${inspection.total_score} 分。${statusHint}`
@@ -360,7 +423,10 @@ export function InspectForm({ classId }: { classId?: string }) {
           巡察拍照與評分
         </h1>
         <p className="mt-1 text-sm text-muted">
-          選班 → 各項目可加多張照片（不扣分）→ 需要時再「標記缺失」→ 發布。
+          依衛生組標準逐項點選加減分（基準 {SCORE_BASE}），可附照片佐證後發布。
+        </p>
+        <p className="mt-1.5 rounded-md bg-coral/10 px-2.5 py-1.5 text-xs text-coral">
+          {SCORING_RUBRIC_META.globalNote}
         </p>
         <p
           className={`mt-2 rounded-lg px-2.5 py-1.5 text-xs sm:text-sm ${
@@ -389,8 +455,9 @@ export function InspectForm({ classId }: { classId?: string }) {
               <br />
               UID：<span className="font-mono">{user.uid}</span>
               <br />
-              Firestore 應有文件 <span className="font-mono">users/{user.uid}</span>
-              ，欄位 <span className="font-mono">role = admin</span>
+              Firestore 應有文件{" "}
+              <span className="font-mono">users/{user.uid}</span>，欄位{" "}
+              <span className="font-mono">role = admin</span>
               （目前：{profile?.role ?? "找不到文件"}）
               {profileError ? `｜${profileError}` : ""}
             </>
@@ -401,12 +468,22 @@ export function InspectForm({ classId }: { classId?: string }) {
             <p className="text-sm font-semibold text-ink">
               {selected.class_name}（{selected.class_id}）
               <span className="ml-2 font-normal text-muted">
-                照片 {photoCount} 張
+                已評 {scoredItems.length}/{items.length}｜照片 {photoCount}
               </span>
             </p>
-            <p className="font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
-              {totalScore}
-            </p>
+            <div className="text-right">
+              <p className="font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
+                {totalScore}
+              </p>
+              <p className="text-[11px] text-muted">
+                {SCORE_BASE}
+                {scoreDelta === 0
+                  ? ""
+                  : scoreDelta > 0
+                    ? ` ${formatRubricScore(scoreDelta)}`
+                    : ` ${scoreDelta}`}
+              </p>
+            </div>
           </div>
         ) : (
           <p className="mt-2 text-sm text-muted">請先選擇班級再評分。</p>
@@ -424,142 +501,227 @@ export function InspectForm({ classId }: { classId?: string }) {
       {classId ? (
         <>
           <section className="panel p-3 sm:p-4">
-            <h2 className="mb-2 text-sm font-semibold text-ink">評分細項</h2>
-            <ul className="grid gap-2">
-              {categories.map((cat) => (
-                <li
-                  key={cat.category}
-                  className={`rounded-lg border p-2.5 ${
-                    cat.flagged
-                      ? "border-coral/40 bg-coral/5"
-                      : "border-line bg-paper/80"
-                  }`}
+            <h2 className="mb-2 text-sm font-semibold text-ink">
+              {SCORING_RUBRIC_META.title}
+            </h2>
+            <p className="mb-3 text-[11px] text-muted">
+              {SCORING_RUBRIC_META.revision}｜點同一檔次可取消；「重複未改善」固定
+              {formatRubricScore(REPEAT_UNFIXED_PENALTY)}。
+            </p>
+
+            <div className="space-y-3">
+              {SCORING_RUBRIC.map((section, sectionIndex) => (
+                <details
+                  key={section.id}
+                  open={sectionIndex === 0}
+                  className="rounded-lg border border-line"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-sm font-semibold text-ink">
-                      {cat.category}{" "}
-                      <span className="text-xs font-normal text-muted">
-                        {cat.flagged
-                          ? `扣 ${cat.deduction}`
-                          : cat.photos.length
-                            ? `佐證 ${cat.photos.length} 張`
-                            : "滿分"}
-                      </span>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button
-                        type="button"
-                        disabled={busy || cat.photos.length >= MAX_PHOTOS_PER_CATEGORY}
-                        onClick={() => {
-                          setActiveCategory(cat.category);
-                          cameraRef.current?.click();
-                        }}
-                        className="rounded-md border border-line bg-white px-2.5 py-1 text-xs hover:border-mint disabled:opacity-50 sm:text-sm"
-                      >
-                        拍照
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy || cat.photos.length >= MAX_PHOTOS_PER_CATEGORY}
-                        onClick={() => {
-                          setActiveCategory(cat.category);
-                          albumRef.current?.click();
-                        }}
-                        className="rounded-md border border-line bg-white px-2.5 py-1 text-xs hover:border-mint disabled:opacity-50 sm:text-sm"
-                      >
-                        相簿
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleCategory(cat.category)}
-                        className={`rounded-md px-2.5 py-1 text-xs sm:text-sm ${
-                          cat.flagged
-                            ? "bg-coral text-white"
-                            : "bg-mint/10 text-mint"
-                        }`}
-                      >
-                        {cat.flagged ? "已標記扣分" : "標記缺失"}
-                      </button>
-                    </div>
-                  </div>
-                  {cat.flagged ? (
-                    <div className="mt-2 grid gap-2 sm:grid-cols-[100px_1fr]">
-                      <label className="text-xs text-muted">
-                        扣分
-                        <input
-                          type="number"
-                          min={1}
-                          max={20}
-                          value={cat.deduction}
-                          onChange={(e) =>
-                            updateCategory(cat.category, {
-                              deduction: Number(e.target.value) || 1,
-                            })
-                          }
-                          className="mt-1 w-full rounded-md border border-line px-2 py-1"
-                        />
-                      </label>
-                      <label className="text-xs text-muted">
-                        備註
-                        <input
-                          type="text"
-                          value={cat.note}
-                          onChange={(e) =>
-                            updateCategory(cat.category, {
-                              note: e.target.value,
-                            })
-                          }
-                          placeholder="例如：教室掃具未歸位"
-                          className="mt-1 w-full rounded-md border border-line px-2 py-1"
-                        />
-                      </label>
-                    </div>
-                  ) : cat.photos.length > 0 ? (
-                    <label className="mt-2 block text-xs text-muted">
-                      備註（選填）
-                      <input
-                        type="text"
-                        value={cat.note}
-                        onChange={(e) =>
-                          updateCategory(cat.category, {
-                            note: e.target.value,
-                          })
-                        }
-                        placeholder="給班級看的說明，不會扣分"
-                        className="mt-1 w-full rounded-md border border-line px-2 py-1"
-                      />
-                    </label>
-                  ) : null}
-                  {cat.photos.length > 0 ? (
-                    <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-                      {cat.photos.map((p) => (
-                        <div key={p.id} className="relative">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={p.url}
-                            alt=""
-                            className="aspect-square w-full rounded-md object-cover"
-                          />
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => removePhoto(cat.category, p.id)}
-                            className="absolute right-1 top-1 rounded bg-black/60 px-1.5 text-[10px] text-white"
-                            aria-label="移除照片"
-                          >
-                            ×
-                          </button>
-                          <p className="mt-0.5 truncate text-[10px] text-muted">
-                            {formatBytes(p.originalBytes)}→
-                            {formatBytes(p.compressedBytes)}
-                          </p>
+                  <summary className="cursor-pointer px-3 py-2.5 text-sm font-semibold text-ink">
+                    {section.title}
+                    <span className="ml-2 text-xs font-normal text-muted">
+                      已評{" "}
+                      {
+                        items.filter(
+                          (i) =>
+                            i.sectionId === section.id &&
+                            effectiveScore(i) !== null,
+                        ).length
+                      }
+                      /{section.items.length}
+                    </span>
+                  </summary>
+                  <div className="space-y-2 border-t border-line p-2.5">
+                    {section.intro ? (
+                      <p className="text-[11px] text-muted">{section.intro}</p>
+                    ) : null}
+                    {section.items.map((rubricItem) => {
+                      const state = items.find(
+                        (i) => i.itemId === rubricItem.id,
+                      )!;
+                      const sc = effectiveScore(state);
+                      return (
+                        <div
+                          key={rubricItem.id}
+                          className={`rounded-lg border p-2.5 ${
+                            sc !== null && sc < 0
+                              ? "border-coral/40 bg-coral/5"
+                              : sc !== null && sc > 0
+                                ? "border-mint/40 bg-leaf/10"
+                                : "border-line bg-paper/80"
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-semibold text-ink">
+                                {rubricItem.title}{" "}
+                                <span className="text-xs font-normal text-muted">
+                                  ({rubricItem.range})
+                                </span>
+                              </p>
+                              {sc !== null ? (
+                                <p
+                                  className={`text-xs font-semibold ${
+                                    sc > 0
+                                      ? "text-mint"
+                                      : sc < 0
+                                        ? "text-coral"
+                                        : "text-muted"
+                                  }`}
+                                >
+                                  {formatRubricScore(sc)}
+                                  {state.repeatUnfixed
+                                    ? "（重複未改善）"
+                                    : state.levelLabel
+                                      ? `｜${state.levelLabel}`
+                                      : ""}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-muted">尚未評分</p>
+                              )}
+                            </div>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                disabled={
+                                  busy ||
+                                  state.photos.length >= MAX_PHOTOS_PER_ITEM
+                                }
+                                onClick={() => {
+                                  setActiveItemId(rubricItem.id);
+                                  cameraRef.current?.click();
+                                }}
+                                className="rounded-md border border-line bg-white px-2 py-1 text-xs hover:border-mint disabled:opacity-50"
+                              >
+                                拍照
+                              </button>
+                              <button
+                                type="button"
+                                disabled={
+                                  busy ||
+                                  state.photos.length >= MAX_PHOTOS_PER_ITEM
+                                }
+                                onClick={() => {
+                                  setActiveItemId(rubricItem.id);
+                                  albumRef.current?.click();
+                                }}
+                                className="rounded-md border border-line bg-white px-2 py-1 text-xs hover:border-mint disabled:opacity-50"
+                              >
+                                相簿
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {rubricItem.levels.map((level) => {
+                              const active =
+                                !state.repeatUnfixed &&
+                                state.score === level.score &&
+                                state.levelLabel === level.label;
+                              return (
+                                <button
+                                  key={`${rubricItem.id}-${level.label}`}
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    selectLevel(
+                                      rubricItem.id,
+                                      level.score,
+                                      level.label,
+                                    )
+                                  }
+                                  className={`rounded-md border px-2 py-1 text-left text-[11px] leading-snug transition sm:text-xs ${
+                                    active
+                                      ? level.score < 0
+                                        ? "border-coral bg-coral text-white"
+                                        : level.score > 0
+                                          ? "border-mint bg-mint text-white"
+                                          : "border-ink bg-ink text-white"
+                                      : "border-line bg-white text-ink hover:border-mint"
+                                  }`}
+                                >
+                                  <span className="font-semibold tabular-nums">
+                                    {formatRubricScore(level.score)}
+                                  </span>{" "}
+                                  {level.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <label className="mt-2 flex items-center gap-2 text-xs text-coral">
+                            <input
+                              type="checkbox"
+                              checked={state.repeatUnfixed}
+                              disabled={busy}
+                              onChange={(e) =>
+                                updateItem(rubricItem.id, {
+                                  repeatUnfixed: e.target.checked,
+                                })
+                              }
+                            />
+                            重複未改善（
+                            {formatRubricScore(REPEAT_UNFIXED_PENALTY)}）
+                          </label>
+
+                          {rubricItem.note ? (
+                            <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+                              ※ {rubricItem.note}
+                            </p>
+                          ) : null}
+
+                          <label className="mt-2 block text-xs text-muted">
+                            備註（選填）
+                            <input
+                              type="text"
+                              value={state.note}
+                              disabled={busy}
+                              onChange={(e) =>
+                                updateItem(rubricItem.id, {
+                                  note: e.target.value,
+                                })
+                              }
+                              placeholder="補充說明"
+                              className="mt-1 w-full rounded-md border border-line px-2 py-1 text-ink"
+                            />
+                          </label>
+
+                          {state.photos.length > 0 ? (
+                            <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                              {state.photos.map((p) => (
+                                <div key={p.id} className="relative">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={p.url}
+                                    alt=""
+                                    className="aspect-square w-full rounded-md object-cover"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      removePhoto(rubricItem.id, p.id)
+                                    }
+                                    className="absolute right-1 top-1 rounded bg-black/60 px-1.5 text-[10px] text-white"
+                                    aria-label="移除照片"
+                                  >
+                                    ×
+                                  </button>
+                                  <p className="mt-0.5 truncate text-[10px] text-muted">
+                                    {formatBytes(p.originalBytes)}→
+                                    {formatBytes(p.compressedBytes)}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </li>
+                      );
+                    })}
+                  </div>
+                </details>
               ))}
-            </ul>
+            </div>
+
             <input
               ref={cameraRef}
               type="file"
@@ -607,7 +769,7 @@ export function InspectForm({ classId }: { classId?: string }) {
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
               rows={2}
-              placeholder="可先只放照片給班級改善，稍後再標記扣分…"
+              placeholder="可自動帶入各項評分摘要，也可自行撰寫…"
               className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none ring-mint focus:ring-2"
             />
             {summary ? (
@@ -626,7 +788,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                 onClick={onPublish}
                 className="rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-white transition hover:bg-leaf disabled:opacity-50"
               >
-                {busy ? "處理中…" : "發布到班級相簿"}
+                {busy ? "處理中…" : `發布（${totalScore} 分）`}
               </button>
               <Link
                 href={`/classes/${classId}`}
@@ -637,12 +799,12 @@ export function InspectForm({ classId }: { classId?: string }) {
             </div>
             {message ? (
               <p
-                className={`mt-3 rounded-lg px-3 py-2 text-sm ${
-                  message.includes("雲端") || message.includes("已發布到")
-                    ? "bg-leaf/15 text-mint"
-                    : message.includes("尚未登入") || message.includes("權限")
-                      ? "bg-coral/10 text-coral"
-                      : "bg-leaf/10 text-ink"
+                className={`mt-2 text-sm ${
+                  message.includes("失敗") ||
+                  message.includes("沒有") ||
+                  message.includes("尚未")
+                    ? "text-coral"
+                    : "text-mint"
                 }`}
               >
                 {message}

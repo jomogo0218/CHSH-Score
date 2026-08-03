@@ -57,8 +57,13 @@ export function AlbumGrid({
                   <figcaption className="space-y-0.5 p-2 text-[11px]">
                     <p className="font-semibold text-ink">{item.category}</p>
                     <p className="line-clamp-2 text-muted">{item.note}</p>
-                    {item.score_deduction < 0 ? (
-                      <p className="font-medium text-coral">
+                    {item.score_deduction !== 0 ? (
+                      <p
+                        className={`font-medium ${
+                          item.score_deduction > 0 ? "text-mint" : "text-coral"
+                        }`}
+                      >
+                        {item.score_deduction > 0 ? "+" : ""}
                         {item.score_deduction} 分
                       </p>
                     ) : null}

@@ -46,3 +46,6 @@ next-env.d.ts
 # local Vercel CLI cache/auth (do not commit)
 .xdg-data/
 .xdg-cache/
+
+# local scratch (PDF extract etc.)
+/tmp/
