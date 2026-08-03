@@ -90,6 +90,16 @@ export async function fetchLatestInspections(
   );
 }
 
+export async function fetchInspection(
+  inspectionId: string,
+): Promise<InspectionDoc | null> {
+  if (!isFirebaseConfigured()) return null;
+  const db = requireDb();
+  const snap = await getDoc(doc(db, "inspections", inspectionId));
+  if (!snap.exists()) return null;
+  return snap.data() as InspectionDoc;
+}
+
 export async function fetchInspectionItems(
   inspectionId: string,
 ): Promise<InspectionItemDoc[]> {

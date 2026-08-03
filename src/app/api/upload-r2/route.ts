@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   AuthRequiredError,
-  requireFirebaseUserIfConfigured,
+  ForbiddenError,
+  requireUploadRoleIfConfigured,
 } from "@/lib/firebase/verify-id-token";
 import { buildObjectKey } from "@/lib/r2/upload";
 import { hasR2Credentials, putR2Object } from "@/lib/r2/server";
@@ -18,11 +19,11 @@ const ALLOWED_TYPES = new Set([
 
 /**
  * 上傳照片至 Cloudflare R2。
- * Firebase 已設定時必須帶 Authorization: Bearer <idToken>。
+ * Firebase 已設定時須登入，且 users.role 為 admin／導師／衛生股長。
  */
 export async function POST(request: NextRequest) {
   try {
-    await requireFirebaseUserIfConfigured(request);
+    await requireUploadRoleIfConfigured(request);
 
     const form = await request.formData();
     const file = form.get("file");
@@ -40,7 +41,11 @@ export async function POST(request: NextRequest) {
     }
 
     const contentType = file.type || "image/jpeg";
-    if (contentType && !ALLOWED_TYPES.has(contentType) && !contentType.startsWith("image/")) {
+    if (
+      contentType &&
+      !ALLOWED_TYPES.has(contentType) &&
+      !contentType.startsWith("image/")
+    ) {
       return NextResponse.json({ error: "僅允許圖片檔" }, { status: 400 });
     }
 
@@ -76,6 +81,9 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     if (err instanceof AuthRequiredError) {
       return NextResponse.json({ error: err.message }, { status: 401 });
+    }
+    if (err instanceof ForbiddenError) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
     }
     console.error("[upload-r2]", err);
     return NextResponse.json(

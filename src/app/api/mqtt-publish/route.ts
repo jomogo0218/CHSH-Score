@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import mqtt from "mqtt";
 import {
   AuthRequiredError,
-  requireFirebaseUserIfConfigured,
+  ForbiddenError,
+  requireAdminIfConfigured,
 } from "@/lib/firebase/verify-id-token";
 import { getAdminPublisherConfig } from "@/lib/mqtt/client";
 
 /**
  * 伺服器端以 admin_inspector 發布 MQTT。
- * Firebase 已設定時必須登入；未設定 MQTT 時回 stub。
+ * Firebase 已設定時必須是 admin；未設定 MQTT 時回 stub。
  */
 export async function POST(request: NextRequest) {
   try {
-    await requireFirebaseUserIfConfigured(request);
+    await requireAdminIfConfigured(request);
 
     const body = (await request.json()) as {
       topics?: string[];
@@ -92,6 +93,9 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     if (err instanceof AuthRequiredError) {
       return NextResponse.json({ error: err.message }, { status: 401 });
+    }
+    if (err instanceof ForbiddenError) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
     }
     console.error("[mqtt-publish]", err);
     return NextResponse.json(

@@ -11,6 +11,7 @@ import {
 } from "@/lib/firebase/client";
 import { subscribeAuth } from "@/lib/firebase/auth";
 import {
+  fetchInspection,
   fetchUserProfile,
   publishInspection,
 } from "@/lib/firebase/firestore";
@@ -53,7 +54,8 @@ function newPhotoId() {
 
 export function InspectForm({ classId }: { classId?: string }) {
   const selected = CLASS_ROSTER.find((c) => c.class_id === classId);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const albumRef = useRef<HTMLInputElement>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [summary, setSummary] = useState("");
   const [busy, setBusy] = useState(false);
@@ -124,6 +126,11 @@ export function InspectForm({ classId }: { classId?: string }) {
     );
   }
 
+  function clearPhotoInputs() {
+    if (cameraRef.current) cameraRef.current.value = "";
+    if (albumRef.current) albumRef.current.value = "";
+  }
+
   async function onPickPhotos(fileList: FileList | null) {
     if (!fileList?.length || !activeCategory || !classId) return;
     const cat = categories.find((c) => c.category === activeCategory);
@@ -133,7 +140,7 @@ export function InspectForm({ classId }: { classId?: string }) {
     if (room <= 0) {
       setMessage(`${activeCategory} 最多 ${MAX_PHOTOS_PER_CATEGORY} 張。`);
       setActiveCategory(null);
-      if (fileRef.current) fileRef.current.value = "";
+      clearPhotoInputs();
       return;
     }
 
@@ -172,7 +179,7 @@ export function InspectForm({ classId }: { classId?: string }) {
     } finally {
       setBusy(false);
       setActiveCategory(null);
-      if (fileRef.current) fileRef.current.value = "";
+      clearPhotoInputs();
     }
   }
 
@@ -198,6 +205,20 @@ export function InspectForm({ classId }: { classId?: string }) {
         `已登入但不是 admin（目前 role=${profile?.role ?? "（沒有 users 文件）"}）。請在 Firestore 建立 users/${auth.currentUser.uid}，欄位 role=admin。`,
       );
       return;
+    }
+
+    if (isFirebaseConfigured() && auth?.currentUser) {
+      try {
+        const existing = await fetchInspection(todayId(classId));
+        if (existing) {
+          const ok = window.confirm(
+            `今天「${selected.class_name}」已有巡察紀錄（分數 ${existing.total_score}）。\n\n再發布會覆蓋舊內容與照片細項，確定要覆寫嗎？`,
+          );
+          if (!ok) return;
+        }
+      } catch {
+        // 查詢失敗仍允許發布；覆寫由後端 setDoc 處理
+      }
     }
 
     setBusy(true);
@@ -431,11 +452,22 @@ export function InspectForm({ classId }: { classId?: string }) {
                         disabled={busy || cat.photos.length >= MAX_PHOTOS_PER_CATEGORY}
                         onClick={() => {
                           setActiveCategory(cat.category);
-                          fileRef.current?.click();
+                          cameraRef.current?.click();
                         }}
                         className="rounded-md border border-line bg-white px-2.5 py-1 text-xs hover:border-mint disabled:opacity-50 sm:text-sm"
                       >
-                        加照片
+                        拍照
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || cat.photos.length >= MAX_PHOTOS_PER_CATEGORY}
+                        onClick={() => {
+                          setActiveCategory(cat.category);
+                          albumRef.current?.click();
+                        }}
+                        className="rounded-md border border-line bg-white px-2.5 py-1 text-xs hover:border-mint disabled:opacity-50 sm:text-sm"
+                      >
+                        相簿
                       </button>
                       <button
                         type="button"
@@ -529,7 +561,15 @@ export function InspectForm({ classId }: { classId?: string }) {
               ))}
             </ul>
             <input
-              ref={fileRef}
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => onPickPhotos(e.target.files)}
+            />
+            <input
+              ref={albumRef}
               type="file"
               accept="image/*"
               multiple
