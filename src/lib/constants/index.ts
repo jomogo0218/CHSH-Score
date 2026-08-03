@@ -73,6 +73,20 @@ export const INSPECTION_CATEGORIES = [
   "廁所",
 ] as const;
 
+/** 巡察「環境說明」罐頭文字（可點選，仍可自行修改） */
+export const SUMMARY_PRESETS = [
+  "各區整潔，維持良好，予以肯定。",
+  "整體尚可，請繼續保持清掃習慣。",
+  "教室掃具未歸位，請中午前改善。",
+  "教室地面／走道有紙屑，請加強清掃。",
+  "外掃區有飲料罐／垃圾，請儘速清理。",
+  "外掃區落葉偏多，請加強清掃。",
+  "廁所有積水／落葉，請清乾並保持通風。",
+  "廁所異味偏重，請加強清潔與通風。",
+  "先放佐證照片，請班級改善後回報銷案。",
+  "複查通過，維持整潔，繼續保持。",
+] as const;
+
 export const STATUS_LABELS: Record<InspectionStatus, string> = {
   pass: "合格",
   pending_fix: "待改善",

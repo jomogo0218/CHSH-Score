@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CLASS_ROSTER, INSPECTION_CATEGORIES } from "@/lib/constants";
+import { CLASS_ROSTER, INSPECTION_CATEGORIES, SUMMARY_PRESETS } from "@/lib/constants";
 import { ClassRosterPicker } from "@/components/ClassRosterPicker";
 import { invalidateCache } from "@/lib/cache/ttl";
 import {
@@ -540,6 +540,29 @@ export function InspectForm({ classId }: { classId?: string }) {
 
           <section className="panel p-3 sm:p-4">
             <h2 className="mb-2 text-sm font-semibold text-ink">環境說明</h2>
+            <p className="mb-1.5 text-[11px] text-muted">
+              點選罐頭文字帶入（可再改字）；也可直接打字。
+            </p>
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {SUMMARY_PRESETS.map((preset) => {
+                const active = summary === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setSummary(preset)}
+                    className={`max-w-full rounded-md border px-2 py-1 text-left text-[11px] leading-snug transition sm:text-xs ${
+                      active
+                        ? "border-mint bg-mint text-white"
+                        : "border-line bg-white text-ink hover:border-mint hover:bg-leaf/15"
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                );
+              })}
+            </div>
             <textarea
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
@@ -547,6 +570,15 @@ export function InspectForm({ classId }: { classId?: string }) {
               placeholder="可先只放照片給班級改善，稍後再標記扣分…"
               className="w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none ring-mint focus:ring-2"
             />
+            {summary ? (
+              <button
+                type="button"
+                className="mt-1.5 text-[11px] text-muted underline"
+                onClick={() => setSummary("")}
+              >
+                清除說明
+              </button>
+            ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
