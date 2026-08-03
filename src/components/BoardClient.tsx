@@ -62,7 +62,7 @@ export function BoardClient() {
         try {
           const result = await withTtlCache(
             "board:latest",
-            () => fetchLatestInspections(20),
+            () => fetchLatestInspections(40),
             FETCH_TTL_MS,
           );
           remote = result.data;
