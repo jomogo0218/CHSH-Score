@@ -71,6 +71,11 @@ export function AlbumGrid({
 
   return (
     <div className="space-y-4">
+      <p className="rounded-lg border border-mint/30 bg-leaf/15 px-3 py-2 text-xs text-ink sm:text-sm">
+        確認導師已改善後，請按下方綠色大按鈕
+        <strong className="text-mint">「確認已改善成功」</strong>
+        ，照片會蓋上「已改善」章。
+      </p>
       {message ? <p className="text-sm text-mint">{message}</p> : null}
       {inspections.map((insp) => {
         const items = itemsByInspection[insp.inspection_id] ?? [];
@@ -89,30 +94,35 @@ export function AlbumGrid({
         const improved = insp.status === "fixed";
 
         return (
-          <article key={insp.inspection_id} className="space-y-2">
+          <article
+            key={insp.inspection_id}
+            className="space-y-2 rounded-xl border border-line bg-white/70 p-2.5 sm:p-3"
+          >
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-[family-name:var(--font-display)] text-base font-bold text-ink">
                 {insp.date.replaceAll("-", "/")}
               </h3>
               <StatusBadge status={insp.status} />
               <span className="text-sm text-mint">{insp.total_score} 分</span>
-              {!improved ? (
-                <button
-                  type="button"
-                  disabled={busyId === insp.inspection_id}
-                  onClick={() => void onConfirmImproved(insp)}
-                  className="rounded-md bg-mint px-2.5 py-1 text-xs font-semibold text-white hover:bg-leaf disabled:opacity-50"
-                >
-                  {busyId === insp.inspection_id
-                    ? "處理中…"
-                    : "已改善成功"}
-                </button>
-              ) : (
-                <span className="text-xs font-semibold text-mint">
-                  照片已蓋「已改善」章
-                </span>
-              )}
             </div>
+
+            {!improved ? (
+              <button
+                type="button"
+                disabled={busyId === insp.inspection_id}
+                onClick={() => void onConfirmImproved(insp)}
+                className="w-full rounded-xl bg-mint px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-leaf disabled:opacity-50"
+              >
+                {busyId === insp.inspection_id
+                  ? "處理中…"
+                  : "確認已改善成功（照片蓋章）"}
+              </button>
+            ) : (
+              <p className="rounded-lg bg-leaf/20 px-3 py-2 text-center text-sm font-semibold text-mint">
+                已確認改善成功 · 下方照片已蓋「已改善」章
+              </p>
+            )}
+
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {photos.map((item) => (
                 <figure

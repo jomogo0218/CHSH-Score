@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CLASS_ROSTER, SUMMARY_PRESETS } from "@/lib/constants";
 import { ClassRosterPicker } from "@/components/ClassRosterPicker";
+import { ConfirmImprovedPanel } from "@/components/ConfirmImprovedPanel";
 import { invalidateCache } from "@/lib/cache/ttl";
 import {
   getFirebaseAuth,
@@ -563,6 +564,13 @@ export function InspectForm({ classId }: { classId?: string }) {
         </p>
         <ClassRosterPicker selectedId={classId} />
       </section>
+
+      {classId && selected ? (
+        <ConfirmImprovedPanel
+          classId={classId}
+          className={selected.class_name}
+        />
+      ) : null}
 
       {classId ? (
         <>

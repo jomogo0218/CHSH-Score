@@ -167,9 +167,13 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       </nav>
 
       <section id="albums" className="panel scroll-mt-20 p-3 sm:p-4">
-        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
+        <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
           巡察照片
         </h2>
+        <p className="mb-3 text-xs text-muted">
+          「確認已改善成功」按鈕在<strong className="text-ink">每一筆巡察日期下方</strong>
+          （本頁「照片」區），不在回報區。
+        </p>
         <AlbumGrid
           inspections={inspections}
           itemsByInspection={itemsByInspection}
