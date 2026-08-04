@@ -4,6 +4,8 @@ import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
 const links = [
   { href: "/", label: "大廳" },
   { href: "/board", label: "看板" },
+  { href: "/recycle", label: "回收" },
+  { href: "/usage", label: "用量" },
   { href: "/qr", label: "QR" },
   { href: "/inspect", label: "巡察" },
   { href: "/login", label: "登入" },

@@ -1,4 +1,8 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 
 export function hasR2Credentials(): boolean {
   return Boolean(
@@ -37,4 +41,53 @@ export async function putR2Object(params: {
       ContentType: params.contentType,
     }),
   );
+}
+
+export type R2BucketUsage = {
+  configured: boolean;
+  bucket: string | null;
+  objectCount: number;
+  usedBytes: number;
+};
+
+/** 列出 bucket 內物件總數與總位元組（分頁加總）。 */
+export async function getR2BucketUsage(): Promise<R2BucketUsage> {
+  const client = getR2Client();
+  const bucket = process.env.R2_BUCKET_NAME ?? null;
+  if (!client || !bucket) {
+    return {
+      configured: false,
+      bucket,
+      objectCount: 0,
+      usedBytes: 0,
+    };
+  }
+
+  let objectCount = 0;
+  let usedBytes = 0;
+  let continuationToken: string | undefined;
+
+  do {
+    const res = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        ContinuationToken: continuationToken,
+        MaxKeys: 1000,
+      }),
+    );
+    for (const obj of res.Contents ?? []) {
+      objectCount += 1;
+      usedBytes += obj.Size ?? 0;
+    }
+    continuationToken = res.IsTruncated
+      ? res.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+
+  return {
+    configured: true,
+    bucket,
+    objectCount,
+    usedBytes,
+  };
 }

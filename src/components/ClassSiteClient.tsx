@@ -153,7 +153,7 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
           { id: "albums", label: "照片" },
           { id: "blogs", label: "說明" },
           { id: "guestbook", label: "回報" },
-          { id: "reminders", label: "提醒" },
+          { id: "reminders", label: "標準" },
           { id: "qr", label: "QR" },
         ].map((tab) => (
           <a
@@ -208,7 +208,7 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       <section id="reminders" className="panel scroll-mt-20 p-3 sm:p-4">
         <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
-          班級提醒
+          評分標準
         </h2>
         <ClassReminders />
       </section>
