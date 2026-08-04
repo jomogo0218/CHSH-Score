@@ -49,6 +49,16 @@
 `role` 可用：`admin`｜`teacher`｜`class_health_officer`｜`inspector`  
 一般使用者最多只能改自己的 `display_name`，不能改 `role`／`class_id`。
 
+### 導師免登入拍照回報
+
+導師點班級名稱 → 看缺失 → **直接拍照上傳**，不必登入、不必回報碼。  
+每次回報只會**累積新增**，不會覆蓋舊照片。
+
+1. 重新**發布**最新 `firestore.rules`（允許免登入新增留言／銷案）
+2. 部署後即可使用；改善照走 `/api/fix-report` 上傳至 R2
+
+
+
 Authorized domains 請加入：`chsh-score.vercel.app`（本機另有 `localhost`）。
 
 ## 3. EMQX Cloud（MQTT Broker，選配）

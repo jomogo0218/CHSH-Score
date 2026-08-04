@@ -25,8 +25,9 @@ export async function GET() {
     firebase,
     r2: { publicUrl: r2Public, upload: r2Write },
     mqtt: { subscribe: mqttSubscribe, publish: mqttPublish },
+    guestFixReport: coreReady,
     hint: coreReady
-      ? "核心已就緒：巡察照片可上傳並供全校瀏覽／回報銷案。"
+      ? "核心已就緒：導師可免登入於班級頁拍照回報（累積、不覆蓋）。請確認已發布最新 firestore.rules。"
       : "請在 Vercel Environment Variables 填入 Firebase 與 R2（見 docs/cloud-setup.md）。MQTT 為選配即時廣播。",
   });
 }

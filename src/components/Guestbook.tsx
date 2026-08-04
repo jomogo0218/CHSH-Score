@@ -3,14 +3,8 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { ROLE_LABELS, STATUS_LABELS } from "@/lib/constants";
 import { invalidateCache } from "@/lib/cache/ttl";
-import {
-  getFirebaseAuth,
-  isFirebaseConfigured,
-} from "@/lib/firebase/client";
-import {
-  fetchUserProfile,
-  postComment,
-} from "@/lib/firebase/firestore";
+import { isFirebaseConfigured } from "@/lib/firebase/client";
+import { postComment } from "@/lib/firebase/firestore";
 import {
   compressInspectionPhoto,
   formatBytes,
@@ -19,10 +13,31 @@ import {
   getLocalCommentsByClass,
   saveLocalComment,
 } from "@/lib/local/store";
-import { uploadInspectionPhoto } from "@/lib/r2/upload";
-import type { CommentDoc, InspectionDoc, UserRole } from "@/lib/types";
+import type { CommentDoc, InspectionDoc } from "@/lib/types";
 
 const DEFAULT_FIX_NOTE = "已打掃完成，請複查。";
+
+type PendingPhoto = {
+  id: string;
+  file: File;
+  preview: string;
+  label: string;
+};
+
+async function uploadFixPhoto(
+  file: File,
+  classId: string,
+): Promise<string> {
+  const form = new FormData();
+  form.append("file", file, "fix.jpg");
+  form.append("classId", classId);
+  const res = await fetch("/api/fix-report", { method: "POST", body: form });
+  const data = (await res.json()) as { photoUrl?: string; error?: string };
+  if (!res.ok || !data.photoUrl) {
+    throw new Error(data.error || "照片上傳失敗");
+  }
+  return data.photoUrl;
+}
 
 export function Guestbook({
   comments: initialComments,
@@ -56,32 +71,36 @@ export function Guestbook({
   const [inspectionId, setInspectionId] = useState(
     () => selectable[0]?.inspection_id ?? "",
   );
+  const [authorName, setAuthorName] = useState("導師");
   const [content, setContent] = useState(DEFAULT_FIX_NOTE);
   const [markFixed, setMarkFixed] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
 
-  async function onPickPhoto(file: File | null) {
-    if (!file) {
-      setPhotoFile(null);
-      setPhotoPreview(null);
-      return;
-    }
+  async function onPickPhotos(fileList: FileList | null) {
+    if (!fileList?.length) return;
     setBusy(true);
     setMessage(null);
     try {
-      const compressed = await compressInspectionPhoto(file);
-      setPhotoFile(compressed);
-      setPhotoPreview(URL.createObjectURL(compressed));
-      setMessage(
-        `佐證照片已就緒 ${formatBytes(file.size)} → ${formatBytes(compressed.size)}`,
-      );
+      const added: PendingPhoto[] = [];
+      for (const raw of [...fileList].slice(0, 10)) {
+        const compressed = await compressInspectionPhoto(raw);
+        added.push({
+          id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          file: compressed,
+          preview: URL.createObjectURL(compressed),
+          label: `${formatBytes(raw.size)}→${formatBytes(compressed.size)}`,
+        });
+      }
+      setPhotos((prev) => [...prev, ...added]);
+      setMessage(`已加入 ${added.length} 張佐證（可再拍，不會覆蓋舊回報）`);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "壓縮失敗");
     } finally {
       setBusy(false);
+      if (cameraRef.current) cameraRef.current.value = "";
+      if (albumRef.current) albumRef.current.value = "";
     }
   }
 
@@ -91,85 +110,63 @@ export function Guestbook({
       setMessage("請選擇要回覆的巡檢紀錄");
       return;
     }
-    if (!photoFile) {
-      setMessage("請先拍照或從相簿選一張打掃後的佐證照片。");
+    if (photos.length === 0) {
+      setMessage("請先拍照或從相簿選佐證照片。");
       return;
     }
+
     setBusy(true);
-    setMessage(null);
+    setMessage("正在上傳佐證…");
     try {
-      const auth = getFirebaseAuth();
-      if (isFirebaseConfigured() && !auth?.currentUser) {
-        setMessage("請先登入（導師／衛生股長帳號）再拍照回報。");
-        return;
-      }
-
-      const uploaded = await uploadInspectionPhoto(photoFile, {
-        classId,
-        prefix: "fixes",
-      });
-      const replyPhotoUrl = uploaded.photoUrl;
       const note = content.trim() || DEFAULT_FIX_NOTE;
+      const name = authorName.trim() || "導師";
+      const savedList: CommentDoc[] = [];
 
-      let role: UserRole = "teacher";
-      let name = "導師";
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        const photoUrl = await uploadFixPhoto(photo.file, classId);
+        const noteForPhoto =
+          photos.length > 1 ? `${note}（${i + 1}/${photos.length}）` : note;
+        // 只在最後一張時標銷案，避免中途狀態跳動
+        const shouldMarkFixed = markFixed && i === photos.length - 1;
 
-      if (isFirebaseConfigured() && auth?.currentUser) {
-        const profile = await fetchUserProfile(auth.currentUser.uid);
-        if (!profile) {
-          setMessage(
-            "找不到 users 權限文件。請請組長在 Firestore 建立對應帳號（role、class_id）。",
-          );
-          return;
+        if (isFirebaseConfigured()) {
+          const saved = await postComment({
+            inspectionId,
+            classId,
+            authorName: name,
+            authorRole: "teacher",
+            content: noteForPhoto,
+            replyPhotoUrl: photoUrl,
+            markFixed: shouldMarkFixed,
+          });
+          savedList.push(saved);
+        } else {
+          const local: CommentDoc = {
+            comment_id: `local_${Date.now()}_${i}`,
+            inspection_id: inspectionId,
+            class_id: classId,
+            author_role: "teacher",
+            author_name: name,
+            content: noteForPhoto,
+            reply_photo_url: photoUrl,
+            created_at: new Date().toISOString(),
+            marks_fixed: shouldMarkFixed,
+          };
+          saveLocalComment(local, shouldMarkFixed);
+          savedList.push(local);
         }
-        role = profile.role;
-        name =
-          profile.display_name ||
-          auth.currentUser.email ||
-          "已登入使用者";
-
-        const saved = await postComment({
-          inspectionId,
-          classId,
-          authorName: name,
-          authorRole: role,
-          content: note,
-          replyPhotoUrl,
-          markFixed,
-        });
-        setComments((prev) => [saved, ...prev]);
-        setMessage(
-          markFixed
-            ? "已送出佐證照片並標為已銷案"
-            : "已送出佐證照片",
-        );
-      } else {
-        const local: CommentDoc = {
-          comment_id: `local_${Date.now()}`,
-          inspection_id: inspectionId,
-          class_id: classId,
-          author_role: role,
-          author_name: name,
-          content: note,
-          reply_photo_url: replyPhotoUrl,
-          created_at: new Date().toISOString(),
-          marks_fixed: markFixed,
-        };
-        saveLocalComment(local, markFixed);
-        invalidateCache(`class:${classId}`);
-        setComments((prev) => [local, ...prev]);
-        setMessage(
-          markFixed
-            ? "已存本機佐證並標為銷案（登入後可寫雲端）"
-            : "已存本機佐證",
-        );
       }
 
+      setComments((prev) => [...savedList, ...prev]);
+      invalidateCache(`class:${classId}`);
+      setMessage(
+        markFixed
+          ? `已新增 ${savedList.length} 張佐證（累積保留）並標為已銷案`
+          : `已新增 ${savedList.length} 張佐證（累積保留，不覆蓋舊回報）`,
+      );
+      setPhotos([]);
       setContent(DEFAULT_FIX_NOTE);
-      setPhotoFile(null);
-      setPhotoPreview(null);
-      if (cameraRef.current) cameraRef.current.value = "";
-      if (albumRef.current) albumRef.current.value = "";
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "送出失敗");
     } finally {
@@ -185,8 +182,11 @@ export function Guestbook({
       >
         <h3 className="font-semibold text-ink">打掃完成・拍照回報</h3>
         <p className="text-sm text-muted">
-          請導師／衛生股長<strong className="text-ink">打掃完直接拍照</strong>
-          上傳佐證，送出後即可銷案。請先登入對應班級帳號。
+          看到缺失後直接拍照上傳即可，
+          <strong className="text-ink">不必登入</strong>
+          。每次回報都會
+          <strong className="text-ink">累積新增</strong>
+          ，不會蓋掉舊照片。
         </p>
 
         <label className="block space-y-1 text-sm">
@@ -216,7 +216,7 @@ export function Guestbook({
             onClick={() => cameraRef.current?.click()}
             className="rounded-lg bg-mint px-4 py-3 text-sm font-semibold text-white hover:bg-leaf disabled:opacity-50"
           >
-            拍照佐證
+            拍照
           </button>
           <button
             type="button"
@@ -224,7 +224,7 @@ export function Guestbook({
             onClick={() => albumRef.current?.click()}
             className="rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold text-ink hover:bg-leaf/10 disabled:opacity-50"
           >
-            從相簿選
+            相簿（可多選）
           </button>
         </div>
         <input
@@ -233,40 +233,59 @@ export function Guestbook({
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={(e) => void onPickPhoto(e.target.files?.[0] ?? null)}
+          onChange={(e) => void onPickPhotos(e.target.files)}
         />
         <input
           ref={albumRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
-          onChange={(e) => void onPickPhoto(e.target.files?.[0] ?? null)}
+          onChange={(e) => void onPickPhotos(e.target.files)}
         />
 
-        {photoPreview ? (
-          <div className="space-y-1">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photoPreview}
-              alt="打掃後佐證預覽"
-              className="max-h-52 w-full rounded-lg object-cover"
-            />
-            <button
-              type="button"
-              className="text-xs text-muted underline"
-              onClick={() => {
-                setPhotoFile(null);
-                setPhotoPreview(null);
-              }}
-            >
-              清除照片重拍
-            </button>
+        {photos.length > 0 ? (
+          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+            {photos.map((p) => (
+              <div key={p.id} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={p.preview}
+                  alt=""
+                  className="aspect-square w-full rounded-md object-cover"
+                />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    setPhotos((prev) => prev.filter((x) => x.id !== p.id))
+                  }
+                  className="absolute right-1 top-1 rounded bg-black/60 px-1.5 text-[10px] text-white"
+                >
+                  ×
+                </button>
+                <p className="mt-0.5 truncate text-[10px] text-muted">
+                  {p.label}
+                </p>
+              </div>
+            ))}
           </div>
         ) : (
           <p className="rounded-lg border border-dashed border-line bg-white/70 px-3 py-6 text-center text-sm text-muted">
-            尚未拍照 — 請按上方「拍照佐證」
+            尚未拍照 — 請按「拍照」或「相簿」
           </p>
         )}
+
+        <label className="block space-y-1 text-sm">
+          <span>顯示名稱</span>
+          <input
+            type="text"
+            value={authorName}
+            onChange={(e) => setAuthorName(e.target.value)}
+            placeholder="例如：導師／衛生股長"
+            className="w-full rounded-lg border border-line bg-white px-3 py-2"
+          />
+        </label>
 
         <label className="block space-y-1 text-sm">
           <span>簡短說明（可改）</span>
@@ -290,10 +309,10 @@ export function Guestbook({
 
         <button
           type="submit"
-          disabled={busy || !inspectionId || !photoFile}
+          disabled={busy || !inspectionId || photos.length === 0}
           className="w-full rounded-xl bg-mint px-4 py-3 font-semibold text-white hover:bg-leaf disabled:opacity-60 sm:w-auto"
         >
-          {busy ? "處理中…" : "送出佐證並回報"}
+          {busy ? "處理中…" : `送出佐證（${photos.length} 張）`}
         </button>
         {message ? <p className="text-sm text-muted">{message}</p> : null}
       </form>
@@ -325,7 +344,7 @@ export function Guestbook({
       ))}
       {comments.length === 0 ? (
         <p className="text-sm text-muted">
-          尚無回報。有待改善時，請打掃後拍照上傳佐證。
+          尚無回報。有待改善時，請打掃後拍照上傳（可多次累積）。
         </p>
       ) : null}
     </div>

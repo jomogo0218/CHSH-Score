@@ -28,6 +28,22 @@ service cloud.firestore {
         || (isHealthOfficerOrTeacher() && isClassMember(classId));
     }
 
+    function isGuestFixComment() {
+      return request.resource.data.author_role == 'teacher'
+        && request.resource.data.class_id is string
+        && request.resource.data.inspection_id is string
+        && request.resource.data.author_name is string
+        && request.resource.data.content is string
+        && request.resource.data.author_name.size() > 0
+        && request.resource.data.author_name.size() <= 40
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() <= 400
+        && request.resource.data.keys().hasAll([
+          'inspection_id', 'class_id', 'author_role', 'author_name',
+          'content', 'created_at'
+        ]);
+    }
+
     match /classes/{classId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -36,12 +52,16 @@ service cloud.firestore {
     match /inspections/{inspectionId} {
       allow read: if true;
       allow create, delete: if isAdmin();
-      // 組長可完整更新；衛生股長／導師可將同班巡檢銷案（status → fixed）
       allow update: if isAdmin()
         || (canCloseCase(resource.data.class_id)
             && request.resource.data.diff(resource.data).affectedKeys()
                 .hasOnly(['status'])
-            && request.resource.data.status == 'fixed');
+            && request.resource.data.status == 'fixed')
+        // 導師免登入銷案：只能把 status 改成 fixed
+        || (request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status'])
+            && request.resource.data.status == 'fixed'
+            && resource.data.status in ['pending_fix', 'pass', 'fixed']);
     }
 
     match /inspection_items/{itemId} {
@@ -51,21 +71,21 @@ service cloud.firestore {
 
     match /comments/{commentId} {
       allow read: if true;
-      allow create: if canCloseCase(request.resource.data.class_id)
-        && request.resource.data.keys().hasAll([
-          'inspection_id', 'class_id', 'author_role', 'author_name', 'content', 'created_at'
-        ])
-        // 身分欄位必須與 users/{uid} 一致，防止自稱組長／亂填班級
-        && request.resource.data.author_role == userDoc().role
-        && (isAdmin() || request.resource.data.class_id == userDoc().class_id);
+      // 登入帳號（身分一致）或免登入導師回報（僅累積留言，不覆寫）
+      allow create: if isGuestFixComment()
+        && (
+          !signedIn()
+          || (canCloseCase(request.resource.data.class_id)
+              && request.resource.data.author_role == userDoc().role)
+          || (isAdmin()
+              && request.resource.data.author_role in ['teacher', 'class_health_officer'])
+        );
       allow update, delete: if isAdmin();
     }
 
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      // 禁止自建身分；請由 admin（或 Console）建立 users 文件
       allow create: if isAdmin();
-      // 一般使用者最多只能改顯示名稱，不能改 role／class_id
       allow update: if isAdmin()
         || (signedIn()
             && request.auth.uid == uid
