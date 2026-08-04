@@ -158,6 +158,11 @@ export interface PublishInspectionInput {
     photo_urls?: string[];
   }>;
   coverPhotoUrl?: string;
+  /**
+   * append：同日追加照片／評分，保留舊細項
+   * replace：整筆覆寫（刪除舊細項）
+   */
+  mode?: "append" | "replace";
 }
 
 export async function publishInspection(
@@ -169,14 +174,82 @@ export async function publishInspection(
   const db = requireDb();
   const date = taiwanDateString();
   const inspectionId = `${date}_${input.classId}`;
+  const mode = input.mode ?? "replace";
 
-  const scoresForTotal = input.categories
+  const existingSnap = await getDoc(doc(db, "inspections", inspectionId));
+  const existing = existingSnap.exists()
+    ? (existingSnap.data() as InspectionDoc)
+    : null;
+
+  const newScores = input.categories
     .filter((c) => c.scored === true)
-    .map((c) => c.score_deduction);
-  const totalScore = computeInspectionTotal(scoresForTotal);
-  const hasPenalty = scoresForTotal.some((s) => s < 0);
-  const status: InspectionStatus = hasPenalty ? "pending_fix" : "pass";
-  const createdAt = new Date().toISOString();
+    .map((c) => ({
+      category: c.category,
+      score: c.score_deduction,
+    }));
+
+  let totalScore: number;
+  let status: InspectionStatus;
+  let summaryBlog = input.summaryBlog;
+  let coverPhotoUrl = input.coverPhotoUrl;
+  let createdAt = new Date().toISOString();
+
+  if (mode === "append" && existing) {
+    createdAt = existing.created_at;
+    coverPhotoUrl = input.coverPhotoUrl || existing.cover_photo_url;
+    if (
+      existing.summary_blog &&
+      input.summaryBlog &&
+      input.summaryBlog !== existing.summary_blog
+    ) {
+      summaryBlog = `${existing.summary_blog}；${input.summaryBlog}`;
+    } else {
+      summaryBlog = input.summaryBlog || existing.summary_blog;
+    }
+
+    if (newScores.length > 0) {
+      const existingItems = await getDocs(
+        query(
+          collection(db, "inspection_items"),
+          where("inspection_id", "==", inspectionId),
+        ),
+      );
+      const scoreByCat = new Map<string, number>();
+      for (const d of existingItems.docs) {
+        const data = d.data() as {
+          category?: string;
+          score_deduction?: number;
+        };
+        if (!data.category) continue;
+        const next = data.score_deduction ?? 0;
+        const prev = scoreByCat.get(data.category);
+        // 同項目多張時分數通常在第一筆；保留非 0 分
+        if (prev === undefined) {
+          scoreByCat.set(data.category, next);
+        } else if (next !== 0) {
+          scoreByCat.set(data.category, next);
+        }
+      }
+      for (const s of newScores) {
+        scoreByCat.set(s.category, s.score);
+      }
+      const merged = [...scoreByCat.values()];
+      totalScore = computeInspectionTotal(merged);
+      const hasPenalty = merged.some((s) => s < 0);
+      status = hasPenalty
+        ? "pending_fix"
+        : existing.status === "fixed"
+          ? "fixed"
+          : "pass";
+    } else {
+      totalScore = existing.total_score;
+      status = existing.status;
+    }
+  } else {
+    const scoresForTotal = newScores.map((s) => s.score);
+    totalScore = computeInspectionTotal(scoresForTotal);
+    status = scoresForTotal.some((s) => s < 0) ? "pending_fix" : "pass";
+  }
 
   const inspection: InspectionDoc = {
     inspection_id: inspectionId,
@@ -184,25 +257,26 @@ export async function publishInspection(
     class_id: input.classId,
     inspector_id: input.inspectorId,
     total_score: totalScore,
-    summary_blog: input.summaryBlog,
+    summary_blog: summaryBlog,
     status,
-    cover_photo_url: input.coverPhotoUrl,
+    cover_photo_url: coverPhotoUrl,
     created_at: createdAt,
   };
 
   await setDoc(doc(db, "inspections", inspectionId), inspection);
 
-  // 同日重發時清掉舊細項，避免照片重複堆疊
-  const existingItems = await getDocs(
-    query(
-      collection(db, "inspection_items"),
-      where("inspection_id", "==", inspectionId),
-    ),
-  );
-  if (!existingItems.empty) {
-    const batch = writeBatch(db);
-    existingItems.docs.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
+  if (mode === "replace") {
+    const existingItems = await getDocs(
+      query(
+        collection(db, "inspection_items"),
+        where("inspection_id", "==", inspectionId),
+      ),
+    );
+    if (!existingItems.empty) {
+      const batch = writeBatch(db);
+      existingItems.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
   }
 
   const stamp = new Date().toTimeString().slice(0, 8);

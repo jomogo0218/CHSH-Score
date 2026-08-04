@@ -27,16 +27,24 @@ function writeJson(key: string, value: unknown) {
 export function saveLocalInspection(
   inspection: InspectionDoc,
   items: Omit<InspectionItemDoc, "item_id">[],
+  mode: "append" | "replace" = "replace",
 ) {
   const list = readJson<InspectionDoc[]>(FEED_KEY, []);
-  const next = [inspection, ...list.filter((i) => i.inspection_id !== inspection.inspection_id)];
+  const next = [
+    inspection,
+    ...list.filter((i) => i.inspection_id !== inspection.inspection_id),
+  ];
   writeJson(FEED_KEY, next);
 
   const allItems = readJson<InspectionItemDoc[]>(ITEMS_KEY, []);
-  const filtered = allItems.filter((i) => i.inspection_id !== inspection.inspection_id);
+  const filtered =
+    mode === "append"
+      ? allItems
+      : allItems.filter((i) => i.inspection_id !== inspection.inspection_id);
+  const stamp = Date.now();
   const withIds = items.map((item, idx) => ({
     ...item,
-    item_id: `local_${inspection.inspection_id}_${idx}`,
+    item_id: `local_${inspection.inspection_id}_${stamp}_${idx}`,
   }));
   writeJson(ITEMS_KEY, [...withIds, ...filtered]);
 }

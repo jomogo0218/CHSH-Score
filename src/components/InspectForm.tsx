@@ -94,6 +94,9 @@ export function InspectForm({ classId }: { classId?: string }) {
   const [profile, setProfile] = useState<UserDoc | null | undefined>(undefined);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [items, setItems] = useState<ItemState[]>(buildInitialItems);
+  const [existingToday, setExistingToday] = useState<InspectionDoc | null>(
+    null,
+  );
 
   useEffect(() => {
     return subscribeAuth((next) => {
@@ -114,6 +117,24 @@ export function InspectForm({ classId }: { classId?: string }) {
         });
     });
   }, []);
+
+  useEffect(() => {
+    if (!classId || !isFirebaseConfigured()) {
+      setExistingToday(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchInspection(todayId(classId))
+      .then((doc) => {
+        if (!cancelled) setExistingToday(doc);
+      })
+      .catch(() => {
+        if (!cancelled) setExistingToday(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [classId, user]);
 
   const isAdmin = profile?.role === "admin";
 
@@ -223,7 +244,7 @@ export function InspectForm({ classId }: { classId?: string }) {
     }
   }
 
-  async function onPublish() {
+  async function onPublish(mode: "append" | "replace" = "append") {
     if (!classId || !selected) {
       setMessage("請先選擇班級");
       return;
@@ -251,22 +272,36 @@ export function InspectForm({ classId }: { classId?: string }) {
       return;
     }
 
+    let publishMode = mode;
+    let existing = existingToday;
     if (isFirebaseConfigured() && auth?.currentUser) {
       try {
-        const existing = await fetchInspection(todayId(classId));
-        if (existing) {
-          const ok = window.confirm(
-            `今天「${selected.class_name}」已有巡察紀錄（分數 ${existing.total_score}）。\n\n再發布會覆蓋舊內容與照片細項，確定要覆寫嗎？`,
-          );
-          if (!ok) return;
-        }
+        existing = await fetchInspection(todayId(classId));
+        setExistingToday(existing);
       } catch {
         // ignore
       }
     }
 
+    if (existing) {
+      if (publishMode === "replace") {
+        const ok = window.confirm(
+          `確定要【整筆覆寫】今天「${selected.class_name}」的巡察嗎？\n舊照片與細項會全部刪除，改成這一次的內容。`,
+        );
+        if (!ok) return;
+      } else {
+        publishMode = "append";
+      }
+    } else {
+      publishMode = "replace";
+    }
+
     setBusy(true);
-    setMessage("正在寫入班級相簿…");
+    setMessage(
+      publishMode === "append"
+        ? "正在追加照片／評分…"
+        : "正在寫入班級相簿…",
+    );
     try {
       const withPhotos = items.filter((i) => i.photos.length > 0);
       const cover = withPhotos[0]?.photos[0]?.url;
@@ -321,26 +356,41 @@ export function InspectForm({ classId }: { classId?: string }) {
           summaryBlog,
           categories: payloadCats,
           coverPhotoUrl: cover,
+          mode: publishMode,
         });
         wroteCloud = true;
+        setExistingToday(inspection);
       } else {
         const scores = payloadCats
           .filter((c) => c.scored)
           .map((c) => c.score_deduction);
         const hasPenalty = scores.some((s) => s < 0);
-        const status: InspectionStatus = hasPenalty
-          ? "pending_fix"
-          : "pass";
+        const prevLocal = existing;
+        const status: InspectionStatus =
+          publishMode === "append" && prevLocal && scores.length === 0
+            ? prevLocal.status
+            : hasPenalty
+              ? "pending_fix"
+              : "pass";
         inspection = {
           inspection_id: todayId(classId),
           date: taiwanDateString(),
           class_id: classId,
           inspector_id: inspectorId,
-          total_score: computeInspectionTotal(scores),
-          summary_blog: summaryBlog,
+          total_score:
+            publishMode === "append" && prevLocal && scores.length === 0
+              ? prevLocal.total_score
+              : computeInspectionTotal(scores),
+          summary_blog:
+            publishMode === "append" &&
+            prevLocal?.summary_blog &&
+            summaryBlog &&
+            summaryBlog !== prevLocal.summary_blog
+              ? `${prevLocal.summary_blog}；${summaryBlog}`
+              : summaryBlog || prevLocal?.summary_blog || "",
           status,
-          cover_photo_url: cover,
-          created_at: new Date().toISOString(),
+          cover_photo_url: cover || prevLocal?.cover_photo_url,
+          created_at: prevLocal?.created_at ?? new Date().toISOString(),
         };
         const stamp = new Date().toTimeString().slice(0, 8);
         const localItems = payloadCats.flatMap((c) => {
@@ -370,7 +420,8 @@ export function InspectForm({ classId }: { classId?: string }) {
             photo_timestamp: stamp,
           }));
         });
-        saveLocalInspection(inspection, localItems);
+        saveLocalInspection(inspection, localItems, publishMode);
+        setExistingToday(inspection);
       }
 
       invalidateCache(`class:${classId}`);
@@ -390,13 +441,28 @@ export function InspectForm({ classId }: { classId?: string }) {
         // MQTT optional
       }
 
+      // 追加後清空本次已上傳照片，方便繼續巡下一區
+      if (publishMode === "append") {
+        setItems((prev) =>
+          prev.map((i) => ({
+            ...i,
+            photos: [],
+            note: "",
+          })),
+        );
+      }
+
       const statusHint =
         inspection.status === "pass"
           ? "狀態合格（無扣分項）。"
-          : "狀態為待改善（含扣分項）。";
+          : inspection.status === "fixed"
+            ? "狀態已銷案。"
+            : "狀態為待改善（含扣分項）。";
       setMessage(
         wroteCloud
-          ? `已發布到雲端：${selected.class_name} ${inspection.total_score} 分。${statusHint}`
+          ? publishMode === "append"
+            ? `已追加到雲端：${selected.class_name} ${inspection.total_score} 分（舊照片保留）。${statusHint}`
+            : `已覆寫發布：${selected.class_name} ${inspection.total_score} 分。${statusHint}`
           : `僅存本機：${selected.class_name}。導師在其他裝置看不到，請先登入再發布。`,
       );
     } catch (err) {
@@ -785,11 +851,25 @@ export function InspectForm({ classId }: { classId?: string }) {
               <button
                 type="button"
                 disabled={busy}
-                onClick={onPublish}
+                onClick={() => void onPublish(existingToday ? "append" : "replace")}
                 className="rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-white transition hover:bg-leaf disabled:opacity-50"
               >
-                {busy ? "處理中…" : `發布（${totalScore} 分）`}
+                {busy
+                  ? "處理中…"
+                  : existingToday
+                    ? `追加發布（保留舊照片）`
+                    : `發布（${totalScore} 分）`}
               </button>
+              {existingToday ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void onPublish("replace")}
+                  className="rounded-lg border border-coral/40 px-4 py-2 text-sm font-semibold text-coral hover:bg-coral/10 disabled:opacity-50"
+                >
+                  整筆覆寫
+                </button>
+              ) : null}
               <Link
                 href={`/classes/${classId}`}
                 className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:bg-leaf/10"
@@ -797,6 +877,12 @@ export function InspectForm({ classId }: { classId?: string }) {
                 查看班級相簿
               </Link>
             </div>
+            {existingToday ? (
+              <p className="mt-2 text-[11px] text-muted">
+                今天已有紀錄（{existingToday.total_score}{" "}
+                分）。預設「追加」不會刪舊照片；只有按「整筆覆寫」才會清空重寫。
+              </p>
+            ) : null}
             {message ? (
               <p
                 className={`mt-2 text-sm ${
