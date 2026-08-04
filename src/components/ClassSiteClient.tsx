@@ -173,6 +173,14 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
         <AlbumGrid
           inspections={inspections}
           itemsByInspection={itemsByInspection}
+          classId={classId}
+          onInspectionUpdated={(updated) => {
+            setInspections((prev) =>
+              prev.map((i) =>
+                i.inspection_id === updated.inspection_id ? updated : i,
+              ),
+            );
+          }}
         />
       </section>
 

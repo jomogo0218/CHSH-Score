@@ -362,3 +362,20 @@ export async function postComment(
 
   return { comment_id: ref.id, ...payload };
 }
+
+/** 組長確認已改善成功（僅改 status → fixed，不刪照片） */
+export async function markInspectionFixed(
+  inspectionId: string,
+  classId: string,
+): Promise<void> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase 尚未設定");
+  }
+  const db = requireDb();
+  await updateDoc(doc(db, "inspections", inspectionId), {
+    status: "fixed" satisfies InspectionStatus,
+  });
+  invalidateCache(`class:${classId}`);
+  invalidateCache("hall:");
+  invalidateCache("board:");
+}

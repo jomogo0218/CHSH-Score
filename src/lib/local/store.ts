@@ -70,14 +70,18 @@ export function saveLocalComment(comment: CommentDoc, markFixed: boolean) {
   writeJson(COMMENTS_KEY, [comment, ...list]);
 
   if (markFixed) {
-    const inspections = getLocalInspections();
-    const next = inspections.map((i) =>
-      i.inspection_id === comment.inspection_id
-        ? { ...i, status: "fixed" as InspectionStatus }
-        : i,
-    );
-    writeJson(FEED_KEY, next);
+    markLocalInspectionFixed(comment.inspection_id);
   }
+}
+
+export function markLocalInspectionFixed(inspectionId: string) {
+  const inspections = getLocalInspections();
+  const next = inspections.map((i) =>
+    i.inspection_id === inspectionId
+      ? { ...i, status: "fixed" as InspectionStatus }
+      : i,
+  );
+  writeJson(FEED_KEY, next);
 }
 
 export function getLocalComments(inspectionId?: string): CommentDoc[] {
