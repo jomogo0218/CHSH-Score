@@ -150,10 +150,10 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       <nav className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
         {[
-          { id: "reminders", label: "提醒" },
           { id: "albums", label: "照片" },
           { id: "blogs", label: "說明" },
           { id: "guestbook", label: "回報" },
+          { id: "reminders", label: "提醒" },
           { id: "qr", label: "QR" },
         ].map((tab) => (
           <a
@@ -165,13 +165,6 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
           </a>
         ))}
       </nav>
-
-      <section id="reminders" className="panel scroll-mt-20 p-3 sm:p-4">
-        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
-          班級提醒
-        </h2>
-        <ClassReminders />
-      </section>
 
       <section id="albums" className="panel scroll-mt-20 p-3 sm:p-4">
         <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
@@ -199,6 +192,13 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
           classId={classId}
           inspections={inspections}
         />
+      </section>
+
+      <section id="reminders" className="panel scroll-mt-20 p-3 sm:p-4">
+        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
+          班級提醒
+        </h2>
+        <ClassReminders />
       </section>
 
       <section id="qr" className="panel scroll-mt-20 p-3 sm:p-4">
