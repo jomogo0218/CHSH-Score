@@ -1,4 +1,4 @@
-const CACHE = "chsh-score-v4";
+const CACHE = "chsh-score-v5";
 const PRECACHE = ["/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {

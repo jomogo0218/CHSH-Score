@@ -20,12 +20,12 @@ import type { InspectionDoc } from "@/lib/types";
  */
 export function ConfirmImprovedPanel({
   classId,
-  className,
+  classLabel,
   inspections: external,
   onInspectionUpdated,
 }: {
   classId: string;
-  className?: string;
+  classLabel?: string;
   /** 若由外層傳入則不再自行抓取 */
   inspections?: InspectionDoc[];
   onInspectionUpdated?: (inspection: InspectionDoc) => void;
@@ -39,22 +39,27 @@ export function ConfirmImprovedPanel({
       setList(external);
       return;
     }
-    const local = getLocalInspectionsByClass(classId);
-    let remote: InspectionDoc[] = [];
-    if (isFirebaseConfigured()) {
-      try {
-        remote = await fetchInspectionsByClass(classId, 10);
-      } catch {
-        // ignore
+    try {
+      const local = getLocalInspectionsByClass(classId);
+      let remote: InspectionDoc[] = [];
+      if (isFirebaseConfigured()) {
+        try {
+          remote = await fetchInspectionsByClass(classId, 10);
+        } catch (err) {
+          console.warn("[ConfirmImprovedPanel] fetch failed", err);
+        }
       }
+      const map = new Map<string, InspectionDoc>();
+      for (const i of [...local, ...remote]) {
+        map.set(i.inspection_id, i);
+      }
+      setList(
+        [...map.values()].sort((a, b) => b.date.localeCompare(a.date)),
+      );
+    } catch (err) {
+      console.warn("[ConfirmImprovedPanel] reload failed", err);
+      setList([]);
     }
-    const map = new Map<string, InspectionDoc>();
-    for (const i of [...local, ...remote]) {
-      map.set(i.inspection_id, i);
-    }
-    setList(
-      [...map.values()].sort((a, b) => b.date.localeCompare(a.date)),
-    );
   }, [classId, external]);
 
   useEffect(() => {
@@ -69,7 +74,7 @@ export function ConfirmImprovedPanel({
 
   async function onConfirm(insp: InspectionDoc) {
     const ok = window.confirm(
-      `確認「${className ?? classId}」${insp.date} 已改善成功？\n班級相簿照片會蓋上「已改善」章。`,
+      `確認「${classLabel ?? classId}」${insp.date} 已改善成功？\n班級相簿照片會蓋上「已改善」章。`,
     );
     if (!ok) return;
 
@@ -91,7 +96,18 @@ export function ConfirmImprovedPanel({
       onInspectionUpdated?.(updated);
       setMessage(`${insp.date} 已確認改善成功，照片已蓋章。`);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "標示失敗");
+      const raw = err instanceof Error ? err.message : "標示失敗";
+      const denied =
+        /permission|insufficient|PERMISSION_DENIED/i.test(raw) ||
+        (typeof err === "object" &&
+          err !== null &&
+          "code" in err &&
+          String((err as { code?: string }).code).includes("permission"));
+      setMessage(
+        denied
+          ? "無權限寫入：請在 Firebase Console 發布最新 firestore.rules（允許 status→fixed）。"
+          : raw,
+      );
     } finally {
       setBusyId(null);
     }
@@ -123,10 +139,11 @@ export function ConfirmImprovedPanel({
             >
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-1">
                 <p className="text-sm font-semibold text-ink">
-                  {insp.date.replaceAll("-", "/")} · {insp.total_score} 分
+                  {(insp.date ?? "").replaceAll("-", "/") || insp.inspection_id}{" "}
+                  · {insp.total_score ?? "—"} 分
                 </p>
                 <p className="text-xs text-coral">
-                  {STATUS_LABELS[insp.status]}
+                  {STATUS_LABELS[insp.status] ?? insp.status ?? "未知"}
                 </p>
               </div>
               {insp.summary_blog ? (

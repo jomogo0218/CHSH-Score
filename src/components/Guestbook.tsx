@@ -168,7 +168,18 @@ export function Guestbook({
       setPhotos([]);
       setContent(DEFAULT_FIX_NOTE);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "送出失敗");
+      const raw = err instanceof Error ? err.message : "送出失敗";
+      const denied =
+        /permission|insufficient|PERMISSION_DENIED/i.test(raw) ||
+        (typeof err === "object" &&
+          err !== null &&
+          "code" in err &&
+          String((err as { code?: string }).code).includes("permission"));
+      setMessage(
+        denied
+          ? "無權限寫入留言：請在 Firebase Console 發布最新 firestore.rules。"
+          : raw,
+      );
     } finally {
       setBusy(false);
     }

@@ -5,27 +5,38 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function userExists() {
       return signedIn()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     function userDoc() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function isAdmin() {
+      return userExists() && userDoc().role == 'admin';
+    }
+
     function isClassMember(classId) {
-      return signedIn() && userDoc().class_id == classId;
+      return userExists() && userDoc().class_id == classId;
     }
 
     function isHealthOfficerOrTeacher() {
-      return signedIn()
+      return userExists()
         && userDoc().role in ['class_health_officer', 'teacher'];
     }
 
     function canCloseCase(classId) {
       return isAdmin()
         || (isHealthOfficerOrTeacher() && isClassMember(classId));
+    }
+
+    function isStatusFixOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status'])
+        && request.resource.data.status == 'fixed'
+        && resource.data.status in ['pending_fix', 'pass', 'fixed'];
     }
 
     function isGuestFixComment() {
@@ -52,16 +63,8 @@ service cloud.firestore {
     match /inspections/{inspectionId} {
       allow read: if true;
       allow create, delete: if isAdmin();
-      allow update: if isAdmin()
-        || (canCloseCase(resource.data.class_id)
-            && request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['status'])
-            && request.resource.data.status == 'fixed')
-        // 導師免登入銷案：只能把 status 改成 fixed
-        || (request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['status'])
-            && request.resource.data.status == 'fixed'
-            && resource.data.status in ['pending_fix', 'pass', 'fixed']);
+      // 先允許「只改 status→fixed」（含已登入巡察帳號），避免 users 讀取失敗擋掉整條規則
+      allow update: if isStatusFixOnly() || isAdmin();
     }
 
     match /inspection_items/{itemId} {
@@ -71,15 +74,14 @@ service cloud.firestore {
 
     match /comments/{commentId} {
       allow read: if true;
-      // 登入帳號（身分一致）或免登入導師回報（僅累積留言，不覆寫）
+      // 免登入／已登入皆可累積導師改善回報；不覆寫舊留言
       allow create: if isGuestFixComment()
-        && (
-          !signedIn()
-          || (canCloseCase(request.resource.data.class_id)
-              && request.resource.data.author_role == userDoc().role)
-          || (isAdmin()
-              && request.resource.data.author_role in ['teacher', 'class_health_officer'])
-        );
+        || (canCloseCase(request.resource.data.class_id)
+            && request.resource.data.author_role == userDoc().role
+            && request.resource.data.keys().hasAll([
+              'inspection_id', 'class_id', 'author_role', 'author_name',
+              'content', 'created_at'
+            ]));
       allow update, delete: if isAdmin();
     }
 

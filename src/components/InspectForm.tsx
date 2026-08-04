@@ -568,7 +568,7 @@ export function InspectForm({ classId }: { classId?: string }) {
       {classId && selected ? (
         <ConfirmImprovedPanel
           classId={classId}
-          className={selected.class_name}
+          classLabel={selected.class_name}
         />
       ) : null}
 
