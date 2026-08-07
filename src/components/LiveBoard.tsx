@@ -39,7 +39,9 @@ function statusTone(status: InspectionDoc["status"]): string {
 }
 
 export function LiveBoard({ items }: { items: InspectionDoc[] }) {
-  const tiles = latestPerClass(items).slice(0, 24);
+  // 已銷案不佔看板；只留待改善／合格等未結案
+  const openItems = items.filter((i) => i.status !== "fixed");
+  const tiles = latestPerClass(openItems).slice(0, 24);
   const newest = tiles[0];
 
   return (
@@ -49,7 +51,9 @@ export function LiveBoard({ items }: { items: InspectionDoc[] }) {
           <h1 className="font-[family-name:var(--font-display)] text-xl font-bold text-mint sm:text-2xl">
             即時看板
           </h1>
-          <p className="text-xs text-muted">每班最新分數 · 適合川堂螢幕</p>
+          <p className="text-xs text-muted">
+            僅顯示尚未銷案 · 已改善請至班級「歷史」查看
+          </p>
         </div>
         {newest ? (
           <p className="text-xs text-muted">
@@ -59,7 +63,9 @@ export function LiveBoard({ items }: { items: InspectionDoc[] }) {
       </header>
 
       {tiles.length === 0 ? (
-        <p className="panel p-4 text-center text-sm text-muted">尚無巡察資料</p>
+        <p className="panel p-4 text-center text-sm text-muted">
+          目前沒有未銷案的巡察（皆已改善或尚無資料）
+        </p>
       ) : (
         <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {tiles.map((item) => (

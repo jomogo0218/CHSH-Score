@@ -29,8 +29,8 @@ import type {
 
 /** 大廳／看板預設最多讀取筆數（控 Firestore 讀取） */
 export const LATEST_INSPECTIONS_LIMIT = 30;
-/** 班級頁近期巡檢上限 */
-export const CLASS_INSPECTIONS_LIMIT = 10;
+/** 班級頁巡檢＋歷史檔案上限 */
+export const CLASS_INSPECTIONS_LIMIT = 40;
 
 function requireDb() {
   const db = getFirestoreDb();
@@ -108,7 +108,7 @@ export async function fetchInspectionItems(
   const q = query(
     collection(db, "inspection_items"),
     where("inspection_id", "==", inspectionId),
-    limit(20),
+    limit(40),
   );
   const snap = await getDocs(q);
   return snap.docs.map(

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlbumGrid } from "@/components/AlbumGrid";
 import { BlogList } from "@/components/BlogList";
+import { CaseHistory } from "@/components/CaseHistory";
 import { ClassBanner } from "@/components/ClassBanner";
 import { ClassQrPanel } from "@/components/ClassQrPanel";
 import { ClassReminders } from "@/components/ClassReminders";
@@ -33,8 +34,8 @@ import type {
   InspectionItemDoc,
 } from "@/lib/types";
 
-/** 僅對最近幾筆巡檢拉 items／comments，避免班級頁一次打爆讀取 */
-const DETAIL_FETCH_LIMIT = 3;
+/** 僅對最近幾筆進行中巡檢預先拉 items／comments */
+const DETAIL_FETCH_LIMIT = 5;
 
 export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
   const classId = classDoc.class_id;
@@ -47,6 +48,12 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
   const [comments, setComments] = useState<CommentDoc[]>([]);
   const hasDemoProfile = DEMO_CLASSES.some((c) => c.class_id === classId);
 
+  const activeInspections = useMemo(
+    () => inspections.filter((i) => i.status !== "fixed"),
+    [inspections],
+  );
+  const historyCount = inspections.length - activeInspections.length;
+
   useEffect(() => {
     let cancelled = false;
 
@@ -56,7 +63,6 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       let remote: InspectionDoc[] = [];
       if (isFirebaseConfigured()) {
         try {
-          // 班級相簿不走 TTL，避免剛發布卻還看到舊快取／demo
           remote = await fetchInspectionsByClass(
             classId,
             CLASS_INSPECTIONS_LIMIT,
@@ -82,8 +88,14 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       const localComments = getLocalCommentsByClass(classId);
       allComments.push(...localComments);
 
-      for (let i = 0; i < merged.length; i++) {
-        const insp = merged[i];
+      // 進行中優先預載；已改善歷史改為點開再載
+      const preloadOrder = [
+        ...merged.filter((i) => i.status !== "fixed"),
+        ...merged.filter((i) => i.status === "fixed"),
+      ];
+
+      for (let i = 0; i < preloadOrder.length; i++) {
+        const insp = preloadOrder[i];
         let items = hasReal
           ? getLocalItems(insp.inspection_id)
           : getItemsForInspection(insp.inspection_id);
@@ -91,7 +103,9 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
         if (localItems.length) items = localItems;
 
         const shouldFetchRemote =
-          isFirebaseConfigured() && i < DETAIL_FETCH_LIMIT;
+          isFirebaseConfigured() &&
+          i < DETAIL_FETCH_LIMIT &&
+          insp.status !== "fixed";
         if (shouldFetchRemote) {
           try {
             const remoteItems = await fetchInspectionItems(insp.inspection_id);
@@ -151,6 +165,7 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       <nav className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
         {[
           { id: "albums", label: "照片" },
+          { id: "history", label: `歷史${historyCount ? `（${historyCount}）` : ""}` },
           { id: "blogs", label: "說明" },
           { id: "guestbook", label: "回報" },
           { id: "reminders", label: "標準" },
@@ -168,14 +183,17 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       <section id="albums" className="panel scroll-mt-20 p-3 sm:p-4">
         <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
-          巡察照片
+          進行中巡察
         </h2>
         <p className="mb-3 text-xs text-muted">
-          「確認已改善成功」按鈕在<strong className="text-ink">每一筆巡察日期下方</strong>
-          （本頁「照片」區），不在回報區。
+          待改善／尚未結案的照片。確認改善成功後會自動存入
+          <a href="#history" className="mx-1 font-semibold text-mint underline">
+            歷史檔案
+          </a>
+          ，可隨時點開重看。
         </p>
         <AlbumGrid
-          inspections={inspections}
+          inspections={activeInspections}
           itemsByInspection={itemsByInspection}
           classId={classId}
           onInspectionUpdated={(updated) => {
@@ -185,6 +203,21 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
               ),
             );
           }}
+        />
+      </section>
+
+      <section id="history" className="panel scroll-mt-20 p-3 sm:p-4">
+        <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
+          歷史檔案
+        </h2>
+        <p className="mb-3 text-xs text-muted">
+          已改善／已銷案案件保留在此，點日期即可查看當日照片與回報。
+        </p>
+        <CaseHistory
+          inspections={inspections}
+          classId={classId}
+          initialItemsByInspection={itemsByInspection}
+          initialComments={comments}
         />
       </section>
 

@@ -94,7 +94,7 @@ export function ConfirmImprovedPanel({
         ),
       );
       onInspectionUpdated?.(updated);
-      setMessage(`${insp.date} 已確認改善成功，照片已蓋章。`);
+      setMessage(`${insp.date} 已確認改善成功，已存入班級「歷史」檔案。`);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "標示失敗";
       const denied =

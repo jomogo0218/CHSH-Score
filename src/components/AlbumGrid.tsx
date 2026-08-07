@@ -53,7 +53,7 @@ export function AlbumGrid({
       invalidateCache(`class:${classId}`);
       const updated = { ...insp, status: "fixed" as const };
       onInspectionUpdated?.(updated);
-      setMessage(`${insp.date} 已標為改善成功，照片已蓋章。`);
+      setMessage(`${insp.date} 已標為改善成功，已存入本班「歷史」檔案。`);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "標示失敗";
       const denied =
@@ -75,7 +75,7 @@ export function AlbumGrid({
   if (inspections.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-line bg-paper/60 px-4 py-8 text-center text-sm text-muted">
-        尚無巡檢相簿
+        目前沒有進行中的巡察。已改善案件請到本頁「歷史」查看。
       </p>
     );
   }
@@ -130,7 +130,7 @@ export function AlbumGrid({
               </button>
             ) : (
               <p className="rounded-lg bg-leaf/20 px-3 py-2 text-center text-sm font-semibold text-mint">
-                已確認改善成功 · 下方照片已蓋「已改善」章
+                已確認改善成功 · 已存入下方「歷史」檔案，可隨時點開重看
               </p>
             )}
 
