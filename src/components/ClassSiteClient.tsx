@@ -184,21 +184,22 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       <ClassBanner classDoc={classDoc} />
       <PinClassBar classId={classId} />
 
-      <section
-        className={`panel px-3 py-2.5 sm:px-4 ${weeklyTotal > 0 || monthlyTotal > 0 ? "alert-box" : ""}`}
-      >
-        <p className="text-sm text-ink">
+      <details className={`panel px-3 py-2.5 sm:px-4 ${weeklyTotal > 0 || monthlyTotal > 0 ? "alert-box" : ""}`}>
+        <summary className="cursor-pointer list-none text-sm text-ink [&::-webkit-details-marker]:hidden">
           本週累計缺失{" "}
           <span className="font-[family-name:var(--font-display)] text-xl font-bold text-mint">
             {weeklyTotal}
           </span>{" "}
           次
-        </p>
-        <p className="text-[11px] text-muted">{weekLabel}（週一至週日）</p>
-        <p className="mt-1 text-xs text-muted">
-          本月 {monthlyTotal} 次 · 本學期 {semesterTotal} 次
-        </p>
-      </section>
+          <span className="ml-2 text-xs font-normal text-muted">點開查看</span>
+        </summary>
+        <div className="mt-2 space-y-1">
+          <p className="text-[11px] text-muted">{weekLabel}（週一至週日）</p>
+          <p className="text-xs text-muted">
+            本月 {monthlyTotal} 次 · 本學期 {semesterTotal} 次
+          </p>
+        </div>
+      </details>
 
       {!hasDemoProfile && inspections.length === 0 ? (
         <p className="rounded-lg border border-line bg-paper/80 px-3 py-2 text-sm text-muted">
