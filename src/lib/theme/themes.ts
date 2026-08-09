@@ -5,6 +5,11 @@ export const THEME_IDS = [
   "night",
   "sky",
   "atelier",
+  "plum",
+  "sakura",
+  "abyss",
+  "gold",
+  "cocoa",
 ] as const;
 
 export type ThemeId = (typeof THEME_IDS)[number];
@@ -23,6 +28,11 @@ export const THEMES: ReadonlyArray<{
   { id: "night", label: "夜間", swatch: "#5ec2a0", themeColor: "#1c232c" },
   { id: "sky", label: "天藍", swatch: "#2b6ea8", themeColor: "#2b6ea8" },
   { id: "atelier", label: "畫報", swatch: "#3a7a62", themeColor: "#2f5d4c" },
+  { id: "plum", label: "梅紫", swatch: "#7b3fa0", themeColor: "#7b3fa0" },
+  { id: "sakura", label: "櫻粉", swatch: "#d46a8a", themeColor: "#d46a8a" },
+  { id: "abyss", label: "深海", swatch: "#3ec8e0", themeColor: "#121c28" },
+  { id: "gold", label: "金秋", swatch: "#c9a227", themeColor: "#c9a227" },
+  { id: "cocoa", label: "可可", swatch: "#6b4226", themeColor: "#6b4226" },
 ];
 
 export function isThemeId(value: string | null | undefined): value is ThemeId {
@@ -44,6 +54,11 @@ const THEME_COLORS: Record<ThemeId, string> = {
   night: "#1c232c",
   sky: "#2b6ea8",
   atelier: "#2f5d4c",
+  plum: "#7b3fa0",
+  sakura: "#d46a8a",
+  abyss: "#121c28",
+  gold: "#c9a227",
+  cocoa: "#6b4226",
 };
 
 /** 進頁面前套用，避免閃一下預設綠 */

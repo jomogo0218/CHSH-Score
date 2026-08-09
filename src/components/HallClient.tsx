@@ -10,7 +10,7 @@ import { fetchLatestInspections } from "@/lib/firebase/firestore";
 import { getLocalInspections } from "@/lib/local/store";
 import { onInspectionUpdate } from "@/lib/live/inspection-events";
 import { useLiveFeedSubscription } from "@/lib/mqtt/useLiveFeed";
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
+import { TEACHER_ZONE_LABEL, TEACHER_ZONE_TAGLINE } from "@/lib/constants";
 import {
   allClasses,
   getDemoClass,
@@ -155,9 +155,9 @@ export function HallClient() {
       />
       <section className="animate-rise space-y-1">
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold leading-tight text-ink sm:text-3xl">
-          {SITE_NAME}
+          {TEACHER_ZONE_LABEL}
         </h1>
-        <p className="text-sm text-muted">{SITE_TAGLINE}</p>
+        <p className="text-sm text-muted">{TEACHER_ZONE_TAGLINE}</p>
         <p className="text-[11px] text-muted">
           {source}
           {liveHint ? ` · ${liveHint}` : ""}

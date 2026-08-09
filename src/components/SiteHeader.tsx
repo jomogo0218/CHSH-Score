@@ -7,19 +7,19 @@ import { logoutAdmin, subscribeAuth } from "@/lib/firebase/auth";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { fetchUserProfile } from "@/lib/firebase/firestore";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
+import { SITE_NAME, SITE_TAGLINE, TEACHER_ZONE_LABEL } from "@/lib/constants";
 
 type NavLink = { href: string; label: string };
 
 /** 導師／訪客：只留日常需要的 */
 const TEACHER_LINKS: NavLink[] = [
-  { href: "/", label: "大廳" },
+  { href: "/", label: TEACHER_ZONE_LABEL },
   { href: "/recycle", label: "回收" },
 ];
 
 /** 組長登入後：完整工具 */
 const STAFF_LINKS: NavLink[] = [
-  { href: "/", label: "大廳" },
+  { href: "/", label: TEACHER_ZONE_LABEL },
   { href: "/board", label: "看板" },
   { href: "/recycle", label: "回收" },
   { href: "/usage", label: "用量" },

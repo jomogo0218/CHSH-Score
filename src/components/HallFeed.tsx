@@ -21,15 +21,15 @@ export function HallFeed({ items }: { items: InspectionDoc[] }) {
     <section className="panel animate-rise p-3 sm:p-4">
       <div className="mb-3">
         <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-mint">
-          最新巡察
+          待改善
         </h2>
         <p className="text-xs text-muted">
-          只顯示尚未銷案；已改善請至班級歷史
+          尚未銷案的班級會出現在這裡。看到自己班就點進去回報
         </p>
       </div>
       {openItems.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line bg-paper/70 px-3 py-6 text-center text-sm text-muted">
-          目前沒有未銷案的巡察；已改善請至班級「歷史」查看
+          目前沒有待改善；本班若已改善請至班級「歷史」查看
         </p>
       ) : (
         <ul className="grid gap-2.5 sm:grid-cols-2">
@@ -83,7 +83,7 @@ export function TopBoard({ inspections }: { inspections: InspectionDoc[] }) {
         <h2 className="font-[family-name:var(--font-display)] text-base font-bold">
           今日優良
         </h2>
-        <p className="text-[11px] text-white/80">缺失最少優先</p>
+        <p className="text-[11px] text-white/80">缺失最少的班 · 點班名可進班級頁</p>
       </div>
       <ol className="grid grid-cols-3 divide-x divide-line/40">
         {inspections.map((item, index) => (
@@ -124,7 +124,9 @@ export function WeeklyBoard({
         <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-mint">
           本週累計缺失
         </h2>
-        <p className="text-xs text-muted">{weekLabel}（週一至週日）</p>
+        <p className="text-xs text-muted">
+          {weekLabel}（週一至週日）· 紅燈＝有缺失，點自己班
+        </p>
       </div>
       <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
         {rows.slice(0, 12).map((row) => (

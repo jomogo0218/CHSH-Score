@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { TEACHER_ZONE_LABEL } from "@/lib/constants";
 import { AlbumGrid } from "@/components/AlbumGrid";
 import { CaseHistory } from "@/components/CaseHistory";
 import { ClassBanner } from "@/components/ClassBanner";
@@ -147,7 +148,7 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
     <div className="space-y-3 sm:space-y-4">
       <p className="text-xs text-muted">
         <Link href="/" className="hover:text-mint">
-          大廳
+          {TEACHER_ZONE_LABEL}
         </Link>
         <span className="mx-1.5">/</span>
         {classDoc.class_name}

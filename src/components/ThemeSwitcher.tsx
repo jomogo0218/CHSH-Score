@@ -67,7 +67,7 @@ export function ThemeSwitcher() {
       {open ? (
         <ul
           role="listbox"
-          className="absolute right-0 z-50 mt-2 max-h-[70vh] min-w-40 space-y-1.5 overflow-y-auto rounded-lg border border-line bg-paper p-2 shadow-md"
+          className="absolute right-0 z-50 mt-2 grid max-h-[70vh] w-[min(18rem,calc(100vw-2rem))] grid-cols-2 gap-1.5 overflow-y-auto rounded-lg border border-line bg-paper p-2 shadow-md"
         >
           {THEMES.map((item) => (
             <li key={item.id}>
@@ -76,7 +76,7 @@ export function ThemeSwitcher() {
                 role="option"
                 aria-selected={item.id === theme}
                 onClick={() => select(item.id)}
-                className={`btn-block btn-wide min-h-9 px-2 py-1.5 text-sm ${
+                className={`btn-block btn-nav w-full min-h-9 justify-start px-2 py-1.5 text-sm ${
                   item.id === theme ? "btn-primary" : ""
                 }`}
               >

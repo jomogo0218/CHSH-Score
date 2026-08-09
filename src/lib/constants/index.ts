@@ -3,6 +3,9 @@ import type { InspectionStatus, UserRole } from "@/lib/types";
 export const SITE_NAME = "嘉華體衛組環境評分";
 export const SITE_SHORT_NAME = "環境評分";
 export const SITE_TAGLINE = "巡察佐證 · 改善回報 · 評分輔助";
+export const TEACHER_ZONE_LABEL = "導師區";
+export const TEACHER_ZONE_TAGLINE =
+  "看自己班有沒有缺失（紅框呼吸燈）。點進去即可拍照回報改善。";
 
 /** 高中班級德目（忠孝仁愛信） */
 const SENIOR_STREAMS = [

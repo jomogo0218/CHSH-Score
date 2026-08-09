@@ -16,7 +16,9 @@ export function ClassDirectory({ classes }: { classes: ClassDoc[] }) {
       <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-mint">
         班級名冊
       </h2>
-      <p className="mt-0.5 text-xs text-muted">共 {classes.length} 班 · 點擊進入班級頁</p>
+      <p className="mt-0.5 text-xs text-muted">
+        共 {classes.length} 班 · 上面沒看到自己班時，從這裡點進去
+      </p>
       <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {GRADE_ORDER.map((grade) => {
           const list = classes.filter((c) => c.grade === grade);

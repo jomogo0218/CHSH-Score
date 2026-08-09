@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TEACHER_ZONE_LABEL } from "@/lib/constants";
 
 export function ClassNotFound({ classId }: { classId: string }) {
   return (
@@ -11,14 +12,14 @@ export function ClassNotFound({ classId }: { classId: string }) {
         不在目前名冊（國一～三、高一～三忠孝仁愛信）。
       </p>
       <p className="text-xs text-muted">
-        若你使用舊版連結（例如 /classes/101），請改從大廳重新選班。
+        若你使用舊版連結（例如 /classes/101），請改從{TEACHER_ZONE_LABEL}重新選班。
       </p>
       <div className="flex flex-wrap justify-center gap-2 pt-1">
         <Link
           href="/"
           className="btn-block btn-primary px-4 py-2 text-sm"
         >
-          回大廳選班
+          回{TEACHER_ZONE_LABEL}選班
         </Link>
         <Link
           href="/inspect"
