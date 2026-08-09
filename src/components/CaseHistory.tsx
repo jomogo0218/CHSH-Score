@@ -41,11 +41,13 @@ export function CaseHistory({
   classId,
   initialItemsByInspection,
   initialComments,
+  compact = false,
 }: {
   inspections: InspectionDoc[];
   classId: string;
   initialItemsByInspection: Record<string, InspectionItemDoc[]>;
   initialComments: CommentDoc[];
+  compact?: boolean;
 }) {
   const history = inspections
     .filter((i) => i.status === "fixed")
@@ -134,17 +136,19 @@ export function CaseHistory({
 
   if (history.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-line bg-paper/60 px-4 py-8 text-center text-sm text-muted">
-        尚無已改善的歷史檔案。確認改善成功後，案件會自動留在這裡供隨時重看。
+      <p className="rounded-xl border border-dashed border-line bg-paper/60 px-4 py-6 text-center text-sm text-muted">
+        尚無歷史檔案。
       </p>
     );
   }
 
   return (
     <div className="space-y-3">
-      <p className="rounded-lg border border-mint/25 bg-leaf/10 px-3 py-2 text-xs text-ink sm:text-sm">
-        已改善案件會永久保留（照片不刪）。點選日期即可展開當日缺失照、說明與導師回報。
-      </p>
+      {compact ? null : (
+        <p className="rounded-lg border border-mint/25 bg-leaf/10 px-3 py-2 text-xs text-ink sm:text-sm">
+          已改善案件會永久保留。點選日期即可展開當日照片與回報。
+        </p>
+      )}
       <ul className="space-y-2">
         {history.map((insp) => {
           const open = openId === insp.inspection_id;
@@ -172,9 +176,6 @@ export function CaseHistory({
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <StatusBadge status={insp.status} />
-                  <span className="text-sm font-semibold text-mint">
-                    {insp.total_score} 分
-                  </span>
                   <span className="text-xs text-muted">
                     {loading ? "載入中…" : open ? "收合" : "查看"}
                   </span>

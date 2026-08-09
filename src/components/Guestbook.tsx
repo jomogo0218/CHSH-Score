@@ -43,10 +43,13 @@ export function Guestbook({
   comments: initialComments,
   classId,
   inspections,
+  compact = false,
 }: {
   comments: CommentDoc[];
   classId: string;
   inspections: InspectionDoc[];
+  /** 導師精簡：只留拍照＋送出 */
+  compact?: boolean;
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
@@ -185,40 +188,49 @@ export function Guestbook({
     }
   }
 
+  const showInspectionSelect = !compact && selectable.length > 1;
+  const showCommentList = !compact;
+
   return (
     <div className="space-y-4">
       <form
         onSubmit={onSubmit}
         className="space-y-3 rounded-xl border border-line bg-leaf/10 p-4"
       >
-        <h3 className="font-semibold text-ink">打掃完成・拍照回報</h3>
-        <p className="text-sm text-muted">
-          看到缺失後直接拍照上傳即可，
-          <strong className="text-ink">不必登入</strong>
-          。每次回報都會
-          <strong className="text-ink">累積新增</strong>
-          ，不會蓋掉舊照片。
-        </p>
+        <h3 className="font-semibold text-ink">拍照回報</h3>
+        {compact ? (
+          <p className="text-sm text-muted">不必登入，拍完直接送出。</p>
+        ) : (
+          <p className="text-sm text-muted">
+            看到缺失後直接拍照上傳即可，
+            <strong className="text-ink">不必登入</strong>
+            。每次回報都會
+            <strong className="text-ink">累積新增</strong>
+            ，不會蓋掉舊照片。
+          </p>
+        )}
 
-        <label className="block space-y-1 text-sm">
-          <span>對應巡檢</span>
-          <select
-            value={inspectionId}
-            onChange={(e) => setInspectionId(e.target.value)}
-            className="w-full rounded-lg border border-line bg-white px-3 py-2"
-            required
-          >
-            {selectable.length === 0 ? (
-              <option value="">尚無可回覆巡檢</option>
-            ) : (
-              selectable.map((i) => (
-                <option key={i.inspection_id} value={i.inspection_id}>
-                  {i.date} · {STATUS_LABELS[i.status]} · {i.total_score} 分
-                </option>
-              ))
-            )}
-          </select>
-        </label>
+        {showInspectionSelect ? (
+          <label className="block space-y-1 text-sm">
+            <span>對應巡檢</span>
+            <select
+              value={inspectionId}
+              onChange={(e) => setInspectionId(e.target.value)}
+              className="w-full rounded-lg border border-line bg-white px-3 py-2"
+              required
+            >
+              {selectable.length === 0 ? (
+                <option value="">尚無可回覆巡檢</option>
+              ) : (
+                selectable.map((i) => (
+                  <option key={i.inspection_id} value={i.inspection_id}>
+                    {i.date} · {STATUS_LABELS[i.status]}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+        ) : null}
 
         <div className="flex flex-wrap gap-2">
           <button
@@ -287,76 +299,82 @@ export function Guestbook({
           </p>
         )}
 
-        <label className="block space-y-1 text-sm">
-          <span>顯示名稱</span>
-          <input
-            type="text"
-            value={authorName}
-            onChange={(e) => setAuthorName(e.target.value)}
-            placeholder="例如：導師／衛生股長"
-            className="w-full rounded-lg border border-line bg-white px-3 py-2"
-          />
-        </label>
+        {compact ? null : (
+          <>
+            <label className="block space-y-1 text-sm">
+              <span>顯示名稱</span>
+              <input
+                type="text"
+                value={authorName}
+                onChange={(e) => setAuthorName(e.target.value)}
+                placeholder="例如：導師／衛生股長"
+                className="w-full rounded-lg border border-line bg-white px-3 py-2"
+              />
+            </label>
 
-        <label className="block space-y-1 text-sm">
-          <span>簡短說明（可改）</span>
-          <input
-            type="text"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder={DEFAULT_FIX_NOTE}
-            className="w-full rounded-lg border border-line bg-white px-3 py-2"
-          />
-        </label>
+            <label className="block space-y-1 text-sm">
+              <span>簡短說明（可改）</span>
+              <input
+                type="text"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder={DEFAULT_FIX_NOTE}
+                className="w-full rounded-lg border border-line bg-white px-3 py-2"
+              />
+            </label>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={markFixed}
-            onChange={(e) => setMarkFixed(e.target.checked)}
-          />
-          確認已清掃完成，標為「已銷案」
-        </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={markFixed}
+                onChange={(e) => setMarkFixed(e.target.checked)}
+              />
+              確認已清掃完成，標為「已銷案」
+            </label>
+          </>
+        )}
 
         <button
           type="submit"
           disabled={busy || !inspectionId || photos.length === 0}
-          className="w-full rounded-xl bg-mint px-4 py-3 font-semibold text-white hover:bg-leaf disabled:opacity-60 sm:w-auto"
+          className="w-full rounded-xl bg-mint px-4 py-3 font-semibold text-white hover:bg-leaf disabled:opacity-60"
         >
-          {busy ? "處理中…" : `送出佐證（${photos.length} 張）`}
+          {busy ? "處理中…" : `送出（${photos.length} 張）`}
         </button>
         {message ? <p className="text-sm text-muted">{message}</p> : null}
       </form>
 
-      {comments.map((c) => (
-        <article
-          key={c.comment_id}
-          className="rounded-xl border border-dashed border-line bg-white/60 p-4"
-        >
-          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <p className="font-semibold">{c.author_name}</p>
-            <p className="text-xs text-muted">
-              {ROLE_LABELS[c.author_role as keyof typeof ROLE_LABELS] ??
-                c.author_role}{" "}
-              · {new Date(c.created_at).toLocaleString("zh-TW")}
-              {c.marks_fixed ? " · 銷案" : ""}
-            </p>
-          </div>
-          <p className="leading-relaxed">{c.content}</p>
-          {c.reply_photo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={c.reply_photo_url}
-              alt="打掃後佐證"
-              className="mt-3 max-h-48 rounded-lg object-cover"
-            />
+      {showCommentList ? (
+        <>
+          {comments.map((c) => (
+            <article
+              key={c.comment_id}
+              className="rounded-xl border border-dashed border-line bg-white/60 p-4"
+            >
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                <p className="font-semibold">{c.author_name}</p>
+                <p className="text-xs text-muted">
+                  {ROLE_LABELS[c.author_role as keyof typeof ROLE_LABELS] ??
+                    c.author_role}{" "}
+                  · {new Date(c.created_at).toLocaleString("zh-TW")}
+                  {c.marks_fixed ? " · 銷案" : ""}
+                </p>
+              </div>
+              <p className="leading-relaxed">{c.content}</p>
+              {c.reply_photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={c.reply_photo_url}
+                  alt="打掃後佐證"
+                  className="mt-3 max-h-48 rounded-lg object-cover"
+                />
+              ) : null}
+            </article>
+          ))}
+          {comments.length === 0 ? (
+            <p className="text-sm text-muted">尚無回報。</p>
           ) : null}
-        </article>
-      ))}
-      {comments.length === 0 ? (
-        <p className="text-sm text-muted">
-          尚無回報。有待改善時，請打掃後拍照上傳（可多次累積）。
-        </p>
+        </>
       ) : null}
     </div>
   );

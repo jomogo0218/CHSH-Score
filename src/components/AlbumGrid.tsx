@@ -26,11 +26,14 @@ export function AlbumGrid({
   itemsByInspection,
   classId,
   onInspectionUpdated,
+  /** teacher：只看缺失照；staff：可確認已改善 */
+  mode = "teacher",
 }: {
   inspections: InspectionDoc[];
   itemsByInspection: Record<string, InspectionItemDoc[]>;
   classId: string;
   onInspectionUpdated?: (inspection: InspectionDoc) => void;
+  mode?: "teacher" | "staff";
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -75,18 +78,20 @@ export function AlbumGrid({
   if (inspections.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-line bg-paper/60 px-4 py-8 text-center text-sm text-muted">
-        目前沒有進行中的巡察。已改善案件請到本頁「歷史」查看。
+        目前沒有待改善事項。
       </p>
     );
   }
 
   return (
     <div className="space-y-4">
-      <p className="rounded-lg border border-mint/30 bg-leaf/15 px-3 py-2 text-xs text-ink sm:text-sm">
-        確認導師已改善後，請按下方綠色大按鈕
-        <strong className="text-mint">「確認已改善成功」</strong>
-        ，照片會蓋上「已改善」章。
-      </p>
+      {mode === "staff" ? (
+        <p className="rounded-lg border border-mint/30 bg-leaf/15 px-3 py-2 text-xs text-ink sm:text-sm">
+          確認導師已改善後，請按
+          <strong className="text-mint">「確認已改善成功」</strong>
+          ，照片會蓋章並存入歷史。
+        </p>
+      ) : null}
       {message ? <p className="text-sm text-mint">{message}</p> : null}
       {inspections.map((insp) => {
         const items = itemsByInspection[insp.inspection_id] ?? [];
@@ -114,10 +119,14 @@ export function AlbumGrid({
                 {insp.date.replaceAll("-", "/")}
               </h3>
               <StatusBadge status={insp.status} />
-              <span className="text-sm text-mint">{insp.total_score} 分</span>
             </div>
+            {insp.summary_blog ? (
+              <p className="text-sm leading-relaxed text-ink">
+                {insp.summary_blog}
+              </p>
+            ) : null}
 
-            {!improved ? (
+            {mode === "staff" && !improved ? (
               <button
                 type="button"
                 disabled={busyId === insp.inspection_id}
@@ -128,11 +137,12 @@ export function AlbumGrid({
                   ? "處理中…"
                   : "確認已改善成功（照片蓋章）"}
               </button>
-            ) : (
+            ) : null}
+            {mode === "staff" && improved ? (
               <p className="rounded-lg bg-leaf/20 px-3 py-2 text-center text-sm font-semibold text-mint">
-                已確認改善成功 · 已存入下方「歷史」檔案，可隨時點開重看
+                已確認改善成功 · 已存入歷史檔案
               </p>
-            )}
+            ) : null}
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {photos.map((item) => (
@@ -160,7 +170,7 @@ export function AlbumGrid({
                   <figcaption className="space-y-0.5 p-2 text-[11px]">
                     <p className="font-semibold text-ink">{item.category}</p>
                     <p className="line-clamp-2 text-muted">{item.note}</p>
-                    {item.score_deduction !== 0 ? (
+                    {mode === "staff" && item.score_deduction !== 0 ? (
                       <p
                         className={`font-medium ${
                           item.score_deduction > 0 ? "text-mint" : "text-coral"

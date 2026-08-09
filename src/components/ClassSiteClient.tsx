@@ -3,11 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AlbumGrid } from "@/components/AlbumGrid";
-import { BlogList } from "@/components/BlogList";
 import { CaseHistory } from "@/components/CaseHistory";
 import { ClassBanner } from "@/components/ClassBanner";
-import { ClassQrPanel } from "@/components/ClassQrPanel";
-import { ClassReminders } from "@/components/ClassReminders";
 import { Guestbook } from "@/components/Guestbook";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import {
@@ -53,6 +50,7 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
     [inspections],
   );
   const historyCount = inspections.length - activeInspections.length;
+  const needsReport = activeInspections.some((i) => i.status === "pending_fix");
 
   useEffect(() => {
     let cancelled = false;
@@ -88,7 +86,6 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       const localComments = getLocalCommentsByClass(classId);
       allComments.push(...localComments);
 
-      // 進行中優先預載；已改善歷史改為點開再載
       const preloadOrder = [
         ...merged.filter((i) => i.status !== "fixed"),
         ...merged.filter((i) => i.status === "fixed"),
@@ -154,48 +151,19 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       {!hasDemoProfile && inspections.length === 0 ? (
         <p className="rounded-lg border border-line bg-paper/80 px-3 py-2 text-sm text-muted">
-          此班尚無巡檢紀錄。可至{" "}
-          <Link href={`/inspect/${classId}`} className="text-mint underline">
-            組長評分
-          </Link>{" "}
-          發布第一則。
+          此班尚無巡察紀錄。
         </p>
       ) : null}
 
-      <nav className="flex flex-wrap gap-1.5 text-xs sm:text-sm">
-        {[
-          { id: "albums", label: "照片" },
-          { id: "history", label: `歷史${historyCount ? `（${historyCount}）` : ""}` },
-          { id: "blogs", label: "說明" },
-          { id: "guestbook", label: "回報" },
-          { id: "reminders", label: "標準" },
-          { id: "qr", label: "QR" },
-        ].map((tab) => (
-          <a
-            key={tab.id}
-            href={`#${tab.id}`}
-            className="rounded-md border border-line bg-paper px-2.5 py-1 hover:bg-leaf/15"
-          >
-            {tab.label}
-          </a>
-        ))}
-      </nav>
-
-      <section id="albums" className="panel scroll-mt-20 p-3 sm:p-4">
-        <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
-          進行中巡察
+      <section className="panel p-3 sm:p-4">
+        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
+          待改善
         </h2>
-        <p className="mb-3 text-xs text-muted">
-          待改善／尚未結案的照片。確認改善成功後會自動存入
-          <a href="#history" className="mx-1 font-semibold text-mint underline">
-            歷史檔案
-          </a>
-          ，可隨時點開重看。
-        </p>
         <AlbumGrid
           inspections={activeInspections}
           itemsByInspection={itemsByInspection}
           classId={classId}
+          mode="teacher"
           onInspectionUpdated={(updated) => {
             setInspections((prev) =>
               prev.map((i) =>
@@ -204,51 +172,39 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
             );
           }}
         />
+        {needsReport ? (
+          <div className="mt-3">
+            <Guestbook
+              comments={comments}
+              classId={classId}
+              inspections={inspections}
+              compact
+            />
+          </div>
+        ) : null}
       </section>
 
-      <section id="history" className="panel scroll-mt-20 p-3 sm:p-4">
-        <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
-          歷史檔案
-        </h2>
-        <p className="mb-3 text-xs text-muted">
-          已改善／已銷案案件保留在此，點日期即可查看當日照片與回報。
-        </p>
-        <CaseHistory
-          inspections={inspections}
-          classId={classId}
-          initialItemsByInspection={itemsByInspection}
-          initialComments={comments}
-        />
-      </section>
+      <details className="panel p-3 sm:p-4">
+        <summary className="cursor-pointer list-none font-[family-name:var(--font-display)] text-lg font-bold text-mint [&::-webkit-details-marker]:hidden">
+          歷史{historyCount ? `（${historyCount}）` : ""}
+          <span className="ml-2 text-xs font-normal text-muted">點開查看</span>
+        </summary>
+        <div className="mt-3">
+          <CaseHistory
+            inspections={inspections}
+            classId={classId}
+            initialItemsByInspection={itemsByInspection}
+            initialComments={comments}
+            compact
+          />
+        </div>
+      </details>
 
-      <section id="blogs" className="panel scroll-mt-20 p-3 sm:p-4">
-        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
-          巡察說明
-        </h2>
-        <BlogList inspections={inspections} />
-      </section>
-
-      <section id="guestbook" className="panel scroll-mt-20 p-3 sm:p-4">
-        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
-          改善回報
-        </h2>
-        <Guestbook
-          comments={comments}
-          classId={classId}
-          inspections={inspections}
-        />
-      </section>
-
-      <section id="reminders" className="panel scroll-mt-20 p-3 sm:p-4">
-        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
-          評分標準
-        </h2>
-        <ClassReminders />
-      </section>
-
-      <section id="qr" className="panel scroll-mt-20 p-3 sm:p-4">
-        <ClassQrPanel classId={classId} className={classDoc.class_name} />
-      </section>
+      <p className="px-1 text-center text-xs text-muted">
+        <Link href="/recycle" className="text-mint underline">
+          資源回收分類
+        </Link>
+      </p>
     </div>
   );
 }

@@ -22,7 +22,6 @@ const STAFF_LINKS: NavLink[] = [
   { href: "/board", label: "看板" },
   { href: "/recycle", label: "回收" },
   { href: "/usage", label: "用量" },
-  { href: "/qr", label: "QR" },
   { href: "/inspect", label: "巡察" },
 ];
 
