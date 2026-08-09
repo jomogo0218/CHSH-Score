@@ -146,7 +146,7 @@ export function UsageDashboard() {
           type="button"
           onClick={() => void load()}
           disabled={busy}
-          className="rounded-lg bg-mint px-3 py-1.5 text-sm font-semibold text-white hover:bg-leaf disabled:opacity-50"
+          className="btn-block btn-primary px-3 py-1.5 text-sm"
         >
           {busy ? "讀取中…" : "重新整理"}
         </button>

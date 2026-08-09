@@ -254,7 +254,7 @@ export function Guestbook({
             type="button"
             disabled={busy}
             onClick={() => setCameraOpen(true)}
-            className="rounded-lg bg-mint px-4 py-3 text-sm font-semibold text-white hover:bg-leaf disabled:opacity-50"
+            className="btn-block btn-primary px-4 py-3 text-sm"
           >
             連拍
           </button>
@@ -262,7 +262,7 @@ export function Guestbook({
             type="button"
             disabled={busy}
             onClick={() => albumRef.current?.click()}
-            className="rounded-lg border border-line bg-paper px-4 py-3 text-sm font-semibold text-ink hover:bg-leaf/10 disabled:opacity-50"
+            className="btn-block px-4 py-3 text-sm"
           >
             相簿（可多選）
           </button>
@@ -384,7 +384,7 @@ export function Guestbook({
         <button
           type="submit"
           disabled={busy || !inspectionId || photos.length === 0}
-          className="w-full rounded-xl bg-mint px-4 py-3 font-semibold text-white hover:bg-leaf disabled:opacity-60"
+          className="btn-block btn-primary btn-wide"
         >
           {busy ? "處理中…" : `送出（${photos.length} 張）`}
         </button>

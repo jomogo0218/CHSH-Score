@@ -162,7 +162,7 @@ export function BurstCamera({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg bg-white/15 px-3 py-1.5 text-sm font-semibold"
+          className="btn-block btn-nav btn-on-dark"
         >
           {doneLabel}
         </button>
@@ -177,8 +177,8 @@ export function BurstCamera({
                 key={it.id}
                 type="button"
                 onClick={() => onItemChange?.(it.id)}
-                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                  active ? "bg-mint text-white" : "bg-white/15 text-white/85"
+                className={`btn-block btn-nav shrink-0 text-xs ${
+                  active ? "btn-primary" : "btn-on-dark"
                 }`}
               >
                 {it.label}
@@ -213,7 +213,7 @@ export function BurstCamera({
               <button
                 type="button"
                 onClick={onFallback}
-                className="rounded-lg bg-mint px-4 py-2 text-sm font-semibold"
+                className="btn-block btn-primary px-4 py-2 text-sm"
               >
                 改用系統相機
               </button>
@@ -250,7 +250,7 @@ export function BurstCamera({
           onClick={() =>
             setFacing((f) => (f === "environment" ? "user" : "environment"))
           }
-          className="rounded-full bg-white/15 px-3 py-2 text-xs"
+          className="btn-block btn-nav btn-on-dark text-xs"
         >
           翻轉
         </button>
@@ -258,6 +258,7 @@ export function BurstCamera({
           type="button"
           disabled={!ready || busy || left <= 0}
           onClick={() => void onShutter()}
+          data-click-sound
           className="h-16 w-16 rounded-full border-4 border-white bg-mint disabled:opacity-40"
           aria-label="拍照"
         />

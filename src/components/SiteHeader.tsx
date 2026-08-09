@@ -79,7 +79,7 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line/70 bg-paper/90 backdrop-blur-md">
+    <header className="site-header sticky top-0 z-40 border-b border-line/70 bg-paper/90 backdrop-blur-md">
       <div className="site-shell flex items-center justify-between gap-2 py-2">
         <Link href="/" className="min-w-0 shrink">
           <span className="block truncate font-[family-name:var(--font-display)] text-base font-bold leading-tight tracking-wide text-mint sm:text-lg">
@@ -89,7 +89,7 @@ export function SiteHeader() {
             {SITE_TAGLINE}
           </span>
         </Link>
-        <nav className="flex shrink-0 items-center gap-0.5 text-xs sm:gap-1 sm:text-sm">
+        <nav className="flex shrink-0 items-center gap-1.5 text-xs sm:gap-2 sm:text-sm">
           {links.map((link) => {
             const active =
               link.href === "/"
@@ -99,9 +99,7 @@ export function SiteHeader() {
               <Link
                 key={`${link.href}-${link.label}`}
                 href={link.href}
-                className={`rounded-md px-2 py-1.5 transition hover:bg-leaf/15 hover:text-mint ${
-                  active ? "bg-leaf/20 font-semibold text-mint" : "text-muted"
-                }`}
+                className={`btn-block btn-nav ${active ? "is-active" : ""}`}
               >
                 {link.label}
               </Link>
@@ -112,15 +110,12 @@ export function SiteHeader() {
             <button
               type="button"
               onClick={() => void onLogout()}
-              className="rounded-md px-2 py-1.5 text-muted transition hover:bg-leaf/15 hover:text-mint"
+              className="btn-block btn-nav"
             >
               登出
             </button>
           ) : (
-            <Link
-              href="/login"
-              className="rounded-md px-2 py-1.5 text-[11px] text-muted/70 transition hover:bg-leaf/15 hover:text-mint sm:text-xs"
-            >
+            <Link href="/login" className="btn-block btn-nav">
               組長
             </Link>
           )}

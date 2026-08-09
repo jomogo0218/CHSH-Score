@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { M_PLUS_Rounded_1c, Noto_Sans_TC } from "next/font/google";
+import { ClickSound } from "@/components/ClickSound";
 import { PwaRegister } from "@/components/PwaRegister";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SITE_NAME, SITE_SHORT_NAME, SITE_TAGLINE } from "@/lib/constants";
@@ -63,6 +64,7 @@ export default function RootLayout({
           {THEME_BOOT_SCRIPT}
         </Script>
         <PwaRegister />
+        <ClickSound />
         <SiteHeader />
         <main className="site-shell py-3 sm:py-5">{children}</main>
         <footer className="site-shell pb-6 pt-1 text-center text-[11px] text-muted">

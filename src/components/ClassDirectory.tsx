@@ -29,14 +29,14 @@ export function ClassDirectory({ classes }: { classes: ClassDoc[] }) {
                 {GRADE_LABELS[grade]}
                 <span className="ml-1 font-normal">（{list.length}）</span>
               </h3>
-              <div className="grid grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-6 gap-2">
                 {list.map((c) => (
                   <Link
                     key={c.class_id}
                     href={`/classes/${c.class_id}`}
                     title={c.class_name}
                     aria-label={c.class_name}
-                    className="flex min-h-9 items-center justify-center rounded-md border border-line bg-paper px-1 py-1.5 text-center text-xs font-medium transition hover:border-mint hover:bg-leaf/15 sm:min-h-10 sm:text-sm"
+                    className="btn-block btn-chip w-full text-center font-medium"
                   >
                     {chipLabel(c.class_name, grade)}
                   </Link>

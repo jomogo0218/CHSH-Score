@@ -16,13 +16,13 @@ export function ClassNotFound({ classId }: { classId: string }) {
       <div className="flex flex-wrap justify-center gap-2 pt-1">
         <Link
           href="/"
-          className="rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-white"
+          className="btn-block btn-primary px-4 py-2 text-sm"
         >
           回大廳選班
         </Link>
         <Link
           href="/inspect"
-          className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink"
+          className="btn-block px-4 py-2 text-sm"
         >
           巡察上傳
         </Link>

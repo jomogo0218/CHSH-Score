@@ -47,7 +47,7 @@ export function InspectShell({ classId }: { classId?: string }) {
         {selected ? (
           <Link
             href={`/inspect/${selected.class_id}`}
-            className="mt-3 inline-block rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-white"
+            className="btn-block btn-primary mt-3 px-4 py-2 text-sm"
           >
             開始評分
           </Link>

@@ -133,7 +133,7 @@ export function AlbumGrid({
                 type="button"
                 disabled={busyId === insp.inspection_id}
                 onClick={() => void onConfirmImproved(insp)}
-                className="w-full rounded-xl bg-mint px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-leaf disabled:opacity-50"
+                className="btn-block btn-primary btn-wide text-sm"
               >
                 {busyId === insp.inspection_id
                   ? "處理中…"

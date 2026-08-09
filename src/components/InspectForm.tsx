@@ -712,7 +712,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                                   setActiveItemId(rubricItem.id);
                                   setCameraOpen(true);
                                 }}
-                                className="rounded-md border border-line bg-paper px-2 py-1 text-xs hover:border-mint disabled:opacity-50"
+                                className="btn-block btn-nav px-2 text-xs"
                               >
                                 連拍
                               </button>
@@ -726,7 +726,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                                   setActiveItemId(rubricItem.id);
                                   albumRef.current?.click();
                                 }}
-                                className="rounded-md border border-line bg-paper px-2 py-1 text-xs hover:border-mint disabled:opacity-50"
+                                className="btn-block btn-nav px-2 text-xs"
                               >
                                 相簿
                               </button>
@@ -942,7 +942,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                 type="button"
                 disabled={busy}
                 onClick={() => void onPublish(existingToday ? "append" : "replace")}
-                className="rounded-lg bg-mint px-4 py-2 text-sm font-semibold text-white transition hover:bg-leaf disabled:opacity-50"
+                className="btn-block btn-primary px-4 py-2 text-sm"
               >
                 {busy
                   ? "處理中…"
@@ -955,14 +955,14 @@ export function InspectForm({ classId }: { classId?: string }) {
                   type="button"
                   disabled={busy}
                   onClick={() => void onPublish("replace")}
-                  className="rounded-lg border border-coral/40 px-4 py-2 text-sm font-semibold text-coral hover:bg-coral/10 disabled:opacity-50"
+                  className="btn-block btn-coral px-4 py-2 text-sm"
                 >
                   整筆覆寫
                 </button>
               ) : null}
               <Link
                 href={`/classes/${classId}`}
-                className="rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink hover:bg-leaf/10"
+                className="btn-block px-4 py-2 text-sm"
               >
                 查看班級相簿
               </Link>

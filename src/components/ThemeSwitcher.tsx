@@ -56,7 +56,7 @@ export function ThemeSwitcher() {
         aria-label={`風格：${current.label}`}
         title={`風格：${current.label}`}
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 rounded-md px-2 py-1.5 text-muted transition hover:bg-leaf/15 hover:text-mint"
+        className="btn-block btn-nav"
       >
         <span
           className="h-3.5 w-3.5 rounded-full border border-line"
@@ -67,7 +67,7 @@ export function ThemeSwitcher() {
       {open ? (
         <ul
           role="listbox"
-          className="absolute right-0 z-50 mt-1 min-w-36 rounded-lg border border-line bg-paper p-1 shadow-md"
+          className="absolute right-0 z-50 mt-2 max-h-[70vh] min-w-40 space-y-1.5 overflow-y-auto rounded-lg border border-line bg-paper p-2 shadow-md"
         >
           {THEMES.map((item) => (
             <li key={item.id}>
@@ -76,10 +76,8 @@ export function ThemeSwitcher() {
                 role="option"
                 aria-selected={item.id === theme}
                 onClick={() => select(item.id)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${
-                  item.id === theme
-                    ? "bg-leaf/20 font-semibold text-mint"
-                    : "text-ink hover:bg-leaf/10"
+                className={`btn-block btn-wide min-h-9 px-2 py-1.5 text-sm ${
+                  item.id === theme ? "btn-primary" : ""
                 }`}
               >
                 <span

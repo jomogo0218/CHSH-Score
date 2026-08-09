@@ -38,7 +38,7 @@ export function ClassRosterPicker({
                 （{classes.length}）
               </span>
             </p>
-            <div className="grid grid-cols-6 gap-1.5">
+            <div className="grid grid-cols-6 gap-2">
               {classes.map((c) => {
                 const selected = c.class_id === selectedId;
                 return (
@@ -48,10 +48,8 @@ export function ClassRosterPicker({
                     title={c.class_name}
                     aria-label={c.class_name}
                     aria-current={selected ? "page" : undefined}
-                    className={`flex min-h-9 items-center justify-center rounded-md border px-1 py-1.5 text-center text-xs font-medium transition sm:min-h-10 sm:text-sm ${
-                      selected
-                        ? "border-mint bg-mint text-white"
-                        : "border-line bg-paper text-ink hover:border-mint hover:bg-leaf/15"
+                    className={`btn-block btn-chip w-full text-center font-medium ${
+                      selected ? "btn-primary" : ""
                     }`}
                   >
                     {chipLabel(c.class_name, grade)}

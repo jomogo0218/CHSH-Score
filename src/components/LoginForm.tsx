@@ -122,7 +122,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={status === "loading"}
-          className="w-full rounded-xl bg-mint px-4 py-2.5 font-semibold text-white transition hover:bg-leaf disabled:cursor-wait disabled:opacity-70"
+          className="btn-block btn-primary btn-wide disabled:cursor-wait"
         >
           {status === "loading" ? "登入中，請稍候…" : "登入"}
         </button>

@@ -148,6 +148,11 @@ export function HallClient() {
   return (
     <div className="space-y-3 sm:space-y-4">
       <SetupStatusBanner />
+      <div
+        className="atelier-hero h-28 overflow-hidden rounded-[0.75rem] bg-cover bg-center shadow-sm sm:h-36"
+        style={{ backgroundImage: "url(/themes/atelier/classroom.jpg)" }}
+        aria-hidden
+      />
       <section className="animate-rise space-y-1">
         <h1 className="font-[family-name:var(--font-display)] text-2xl font-extrabold leading-tight text-ink sm:text-3xl">
           {SITE_NAME}
