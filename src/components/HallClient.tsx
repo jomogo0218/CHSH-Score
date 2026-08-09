@@ -189,23 +189,33 @@ export function HallClient() {
       {topBoard.length > 0 ? (
         <TopBoard inspections={topBoard} highlightClassId={pinnedClassId} />
       ) : null}
-      <WeeklyBoard
-        rows={weekRows}
-        weekLabel={weekLabel}
-        highlightClassId={pinnedClassId}
-      />
-      <RankBoard
-        title="本月累計缺失"
-        hint={`${monthLabel} · 缺失多的在前`}
-        rows={monthRows}
-        highlightClassId={pinnedClassId}
-      />
-      <RankBoard
-        title="本學期累計缺失"
-        hint={`${semesterLabel}（上學期 8–1 月／下學期 2–7 月）`}
-        rows={semesterRows}
-        highlightClassId={pinnedClassId}
-      />
+      {weekRows.length || monthRows.length || semesterRows.length ? (
+        <details className="panel animate-rise p-3 sm:p-4">
+          <summary className="cursor-pointer list-none font-[family-name:var(--font-display)] text-lg font-bold text-mint [&::-webkit-details-marker]:hidden">
+            累計缺失
+            <span className="ml-2 text-xs font-normal text-muted">點開看</span>
+          </summary>
+          <div className="mt-3 space-y-4">
+            <WeeklyBoard
+              rows={weekRows}
+              weekLabel={weekLabel}
+              highlightClassId={pinnedClassId}
+            />
+            <RankBoard
+              title="本月累計缺失"
+              hint={`${monthLabel} · 缺失多的在前`}
+              rows={monthRows}
+              highlightClassId={pinnedClassId}
+            />
+            <RankBoard
+              title="本學期累計缺失"
+              hint={`${semesterLabel}（上學期 8–1 月／下學期 2–7 月）`}
+              rows={semesterRows}
+              highlightClassId={pinnedClassId}
+            />
+          </div>
+        </details>
+      ) : null}
       <HallFeed items={openFeed.slice(0, 12)} highlightClassId={pinnedClassId} />
       <ClassDirectory classes={allClasses} highlightClassId={pinnedClassId} />
     </div>

@@ -179,14 +179,12 @@ export function RankBoard({
     : rows;
 
   return (
-    <section className="panel animate-rise p-3 sm:p-4">
-      <div className="mb-2">
-        <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-mint">
-          {title}
-        </h2>
-        <p className="text-xs text-muted">{hint}</p>
-      </div>
-      <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+    <div>
+      <h3 className="font-[family-name:var(--font-display)] text-base font-bold text-mint">
+        {title}
+      </h3>
+      <p className="mt-0.5 text-xs text-muted">{hint}</p>
+      <ul className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
         {ordered.slice(0, 12).map((row) => {
           const mine = mineClass(row.classId, highlightClassId);
           return (
@@ -209,7 +207,7 @@ export function RankBoard({
           );
         })}
       </ul>
-    </section>
+    </div>
   );
 }
 
