@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useRef, useState, type FormEvent } from "react";
+import { BurstCamera } from "@/components/BurstCamera";
 import { ROLE_LABELS, STATUS_LABELS } from "@/lib/constants";
 import { invalidateCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { postComment } from "@/lib/firebase/firestore";
 import {
-  compressInspectionPhoto,
+  ensureInspectionPhotoSize,
   formatBytes,
 } from "@/lib/image/compress";
 import {
@@ -53,6 +54,7 @@ export function Guestbook({
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const [comments, setComments] = useState<CommentDoc[]>(() => {
     const local = getLocalCommentsByClass(classId);
@@ -88,7 +90,7 @@ export function Guestbook({
     try {
       const added: PendingPhoto[] = [];
       for (const raw of [...fileList].slice(0, 10)) {
-        const compressed = await compressInspectionPhoto(raw);
+        const compressed = await ensureInspectionPhotoSize(raw);
         added.push({
           id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           file: compressed,
@@ -236,10 +238,10 @@ export function Guestbook({
           <button
             type="button"
             disabled={busy}
-            onClick={() => cameraRef.current?.click()}
+            onClick={() => setCameraOpen(true)}
             className="rounded-lg bg-mint px-4 py-3 text-sm font-semibold text-white hover:bg-leaf disabled:opacity-50"
           >
-            拍照
+            連拍
           </button>
           <button
             type="button"
@@ -250,6 +252,30 @@ export function Guestbook({
             相簿（可多選）
           </button>
         </div>
+        {cameraOpen ? (
+          <BurstCamera
+            open
+            title="改善連拍"
+            remaining={Math.max(0, 10 - photos.length)}
+            onClose={() => setCameraOpen(false)}
+            onCapture={async (file) => {
+              const compressed = await ensureInspectionPhotoSize(file);
+              setPhotos((prev) => [
+                ...prev,
+                {
+                  id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                  file: compressed,
+                  preview: URL.createObjectURL(compressed),
+                  label: formatBytes(compressed.size),
+                },
+              ]);
+            }}
+            onFallback={() => {
+              setCameraOpen(false);
+              cameraRef.current?.click();
+            }}
+          />
+        ) : null}
         <input
           ref={cameraRef}
           type="file"

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CLASS_ROSTER, SUMMARY_PRESETS } from "@/lib/constants";
+import { BurstCamera } from "@/components/BurstCamera";
 import { ClassRosterPicker } from "@/components/ClassRosterPicker";
 import { ConfirmImprovedPanel } from "@/components/ConfirmImprovedPanel";
 import { invalidateCache } from "@/lib/cache/ttl";
@@ -17,7 +18,7 @@ import {
   publishInspection,
 } from "@/lib/firebase/firestore";
 import {
-  compressInspectionPhoto,
+  ensureInspectionPhotoSize,
   formatBytes,
 } from "@/lib/image/compress";
 import { saveLocalInspection } from "@/lib/local/store";
@@ -87,7 +88,9 @@ export function InspectForm({ classId }: { classId?: string }) {
   const selected = CLASS_ROSTER.find((c) => c.class_id === classId);
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
+  const photoCountRef = useRef<Record<string, number>>({});
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [summary, setSummary] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -136,6 +139,12 @@ export function InspectForm({ classId }: { classId?: string }) {
       cancelled = true;
     };
   }, [classId, user]);
+
+  useEffect(() => {
+    for (const i of items) {
+      photoCountRef.current[i.itemId] = i.photos.length;
+    }
+  }, [items]);
 
   const isAdmin = profile?.role === "admin";
 
@@ -194,6 +203,49 @@ export function InspectForm({ classId }: { classId?: string }) {
     if (albumRef.current) albumRef.current.value = "";
   }
 
+  async function ingestPhoto(file: File, itemId: string, keepOpen: boolean) {
+    if (!classId) return;
+    const item = items.find((i) => i.itemId === itemId);
+    if (!item) return;
+    const used = photoCountRef.current[itemId] ?? item.photos.length;
+    if (used >= MAX_PHOTOS_PER_ITEM) {
+      setMessage(`${item.category} 最多 ${MAX_PHOTOS_PER_ITEM} 張。`);
+      return;
+    }
+    photoCountRef.current[itemId] = used + 1;
+
+    try {
+      const originalBytes = file.size;
+      const compressed = await ensureInspectionPhotoSize(file);
+      const uploaded = await uploadInspectionPhoto(compressed, { classId });
+      const entry: PhotoEntry = {
+        id: newPhotoId(),
+        url: uploaded.photoUrl,
+        originalBytes,
+        compressedBytes: compressed.size,
+      };
+      setItems((prev) =>
+        prev.map((i) => {
+          if (i.itemId !== itemId) return i;
+          return {
+            ...i,
+            photos: [...i.photos, entry],
+            note: i.note || `${i.category}巡察佐證`,
+          };
+        }),
+      );
+      if (!keepOpen) {
+        setMessage(`${item.category} 已加 1 張。`);
+      }
+    } catch (err) {
+      photoCountRef.current[itemId] = Math.max(
+        0,
+        (photoCountRef.current[itemId] ?? 1) - 1,
+      );
+      throw err;
+    }
+  }
+
   async function onPickPhotos(fileList: FileList | null) {
     if (!fileList?.length || !activeItemId || !classId) return;
     const item = items.find((i) => i.itemId === activeItemId);
@@ -210,31 +262,12 @@ export function InspectForm({ classId }: { classId?: string }) {
     const files = [...fileList].slice(0, room);
     setBusy(true);
     setMessage(null);
-    const added: PhotoEntry[] = [];
     try {
       for (const file of files) {
-        const originalBytes = file.size;
-        const compressed = await compressInspectionPhoto(file);
-        const uploaded = await uploadInspectionPhoto(compressed, { classId });
-        added.push({
-          id: newPhotoId(),
-          url: uploaded.photoUrl,
-          originalBytes,
-          compressedBytes: compressed.size,
-        });
+        await ingestPhoto(file, activeItemId, false);
       }
-      setItems((prev) =>
-        prev.map((i) => {
-          if (i.itemId !== activeItemId) return i;
-          return {
-            ...i,
-            photos: [...i.photos, ...added],
-            note: i.note || (added.length ? `${i.category}巡察佐證` : i.note),
-          };
-        }),
-      );
       setMessage(
-        `${item.category} 已加 ${added.length} 張（共 ${item.photos.length + added.length} 張）。請再點選加減分標準。`,
+        `${item.category} 已加 ${files.length} 張（共 ${item.photos.length + files.length} 張）。`,
       );
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "上傳失敗");
@@ -242,6 +275,15 @@ export function InspectForm({ classId }: { classId?: string }) {
       setBusy(false);
       setActiveItemId(null);
       clearPhotoInputs();
+    }
+  }
+
+  async function onBurstCapture(file: File) {
+    if (!activeItemId) return;
+    try {
+      await ingestPhoto(file, activeItemId, true);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "上傳失敗");
     }
   }
 
@@ -662,11 +704,11 @@ export function InspectForm({ classId }: { classId?: string }) {
                                 }
                                 onClick={() => {
                                   setActiveItemId(rubricItem.id);
-                                  cameraRef.current?.click();
+                                  setCameraOpen(true);
                                 }}
                                 className="rounded-md border border-line bg-white px-2 py-1 text-xs hover:border-mint disabled:opacity-50"
                               >
-                                拍照
+                                連拍
                               </button>
                               <button
                                 type="button"
@@ -796,13 +838,38 @@ export function InspectForm({ classId }: { classId?: string }) {
               ))}
             </div>
 
+            {cameraOpen && activeItemId ? (
+              <BurstCamera
+                open
+                title={
+                  items.find((i) => i.itemId === activeItemId)?.category ??
+                  "連拍"
+                }
+                remaining={
+                  MAX_PHOTOS_PER_ITEM -
+                  (photoCountRef.current[activeItemId] ??
+                    items.find((i) => i.itemId === activeItemId)?.photos
+                      .length ??
+                    0)
+                }
+                onClose={() => {
+                  setCameraOpen(false);
+                  setActiveItemId(null);
+                }}
+                onCapture={(file) => void onBurstCapture(file)}
+                onFallback={() => {
+                  setCameraOpen(false);
+                  cameraRef.current?.click();
+                }}
+              />
+            ) : null}
             <input
               ref={cameraRef}
               type="file"
               accept="image/*"
               capture="environment"
               className="hidden"
-              onChange={(e) => onPickPhotos(e.target.files)}
+              onChange={(e) => void onPickPhotos(e.target.files)}
             />
             <input
               ref={albumRef}
