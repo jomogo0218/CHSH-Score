@@ -31,18 +31,25 @@ export function RecycleGuide() {
       </header>
 
       <section className="panel space-y-3 p-3 sm:p-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/docs/sorting-training.png"
-          alt="由衛生組精心規劃的分類特訓班，保證您不出3日必成為轟動嘉華的分類高手"
-          className="recycle-hero-default w-full max-w-lg rounded-lg border border-line bg-paper"
-        />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/themes/atelier/recycle.jpg"
-          alt=""
-          className="recycle-hero-atelier w-full max-w-lg rounded-lg border border-line bg-paper"
-        />
+        <details className="recycle-poster">
+          <summary className="btn-block btn-nav cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            海報（點開看）
+          </summary>
+          <div className="mt-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/docs/sorting-training.png"
+              alt="由衛生組精心規劃的分類特訓班，保證您不出3日必成為轟動嘉華的分類高手"
+              className="recycle-hero-default w-full max-w-lg rounded-lg border border-line bg-paper"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/themes/atelier/recycle.jpg"
+              alt=""
+              className="recycle-hero-atelier w-full max-w-lg rounded-lg border border-line bg-paper"
+            />
+          </div>
+        </details>
         <ul className="grid gap-2 sm:grid-cols-2">
           {RECYCLE_REMINDERS.map((item) => (
             <li

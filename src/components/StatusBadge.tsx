@@ -4,7 +4,9 @@ import { STATUS_LABELS } from "@/lib/constants";
 export function StatusBadge({ status }: { status: InspectionStatus }) {
   return (
     <span
-      className={`status-${status} inline-flex rounded-md px-2 py-0.5 text-xs font-semibold tracking-wide`}
+      className={`status-${status} inline-flex rounded-md px-2 py-0.5 text-xs font-semibold tracking-wide ${
+        status === "pending_fix" ? "alert-box" : ""
+      }`}
     >
       {STATUS_LABELS[status]}
     </span>

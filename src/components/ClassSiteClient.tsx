@@ -155,7 +155,9 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
 
       <ClassBanner classDoc={classDoc} />
 
-      <section className="panel px-3 py-2.5 sm:px-4">
+      <section
+        className={`panel px-3 py-2.5 sm:px-4 ${weeklyTotal > 0 ? "alert-box" : ""}`}
+      >
         <p className="text-sm text-ink">
           本週累計缺失{" "}
           <span className="font-[family-name:var(--font-display)] text-xl font-bold text-mint">
@@ -172,7 +174,9 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
         </p>
       ) : null}
 
-      <section className="panel p-3 sm:p-4">
+      <section
+        className={`panel p-3 sm:p-4 ${needsReport ? "alert-box" : ""}`}
+      >
         <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
           待改善
         </h2>

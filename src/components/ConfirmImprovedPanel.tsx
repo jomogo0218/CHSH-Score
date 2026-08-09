@@ -138,7 +138,7 @@ export function ConfirmImprovedPanel({
           {pending.map((insp) => (
             <li
               key={insp.inspection_id}
-              className="rounded-xl border border-coral/30 bg-coral/5 p-3"
+              className="alert-box rounded-xl bg-coral/5 p-3"
             >
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-1">
                 <p className="text-sm font-semibold text-ink">

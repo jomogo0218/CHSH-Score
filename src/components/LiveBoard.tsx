@@ -83,7 +83,11 @@ export function LiveBoard({ items }: { items: InspectionDoc[] }) {
               <Link
                 key={item.inspection_id}
                 href={classHref(item.class_id)}
-                className={`panel flex flex-col gap-1 rounded-lg border p-2.5 transition hover:-translate-y-0.5 hover:border-mint sm:p-3 ${statusTone(item.status)}`}
+                className={`panel flex flex-col gap-1 rounded-lg border p-2.5 transition hover:-translate-y-0.5 hover:border-mint sm:p-3 ${statusTone(item.status)} ${
+                  item.status === "pending_fix" || deficiencyCountOf(item) > 0
+                    ? "alert-box"
+                    : ""
+                }`}
               >
                 <div className="flex items-start justify-between gap-1">
                   <p className="min-w-0 truncate text-xs font-semibold text-ink sm:text-sm">

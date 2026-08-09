@@ -666,7 +666,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                           key={rubricItem.id}
                           className={`rounded-lg border p-2.5 ${
                             sc !== null && sc < 0
-                              ? "border-coral/40 bg-coral/5"
+                              ? "alert-box bg-coral/5"
                               : sc !== null && sc > 0
                                 ? "border-mint/40 bg-leaf/10"
                                 : "border-line bg-paper/80"

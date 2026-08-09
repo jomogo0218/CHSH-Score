@@ -114,7 +114,9 @@ export function AlbumGrid({
         return (
           <article
             key={insp.inspection_id}
-            className="space-y-2 rounded-xl border border-line bg-paper/70 p-2.5 sm:p-3"
+            className={`space-y-2 rounded-xl border bg-paper/70 p-2.5 sm:p-3 ${
+              !improved ? "alert-box" : "border-line"
+            }`}
           >
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-[family-name:var(--font-display)] text-base font-bold text-ink">
@@ -150,7 +152,11 @@ export function AlbumGrid({
               {photos.map((item) => (
                 <figure
                   key={item.item_id}
-                  className="overflow-hidden rounded-lg border border-line bg-paper/90"
+                  className={`overflow-hidden rounded-lg border bg-paper/90 ${
+                    !improved && item.score_deduction < 0
+                      ? "alert-box"
+                      : "border-line"
+                  }`}
                 >
                   <div className="relative">
                     {item.photo_url ? (

@@ -37,7 +37,11 @@ export function HallFeed({ items }: { items: InspectionDoc[] }) {
             <li key={item.inspection_id}>
               <Link
                 href={classHref(item.class_id)}
-                className="group flex gap-3 overflow-hidden rounded-lg border border-line bg-paper/90 transition hover:border-mint"
+                className={`group flex gap-3 overflow-hidden rounded-lg border bg-paper/90 transition hover:border-mint ${
+                  item.status === "pending_fix" || deficiencyCountOf(item) > 0
+                    ? "alert-box"
+                    : "border-line"
+                }`}
               >
                 <div
                   className="h-20 w-24 shrink-0 bg-cover bg-center sm:h-24 sm:w-28"
@@ -84,7 +88,12 @@ export function TopBoard({ inspections }: { inspections: InspectionDoc[] }) {
       <ol className="grid grid-cols-3 divide-x divide-line/40">
         {inspections.map((item, index) => (
           <li key={item.inspection_id} className="p-2.5 sm:p-3">
-            <Link href={classHref(item.class_id)} className="block space-y-1">
+            <Link
+              href={classHref(item.class_id)}
+              className={`block space-y-1 rounded-md p-1 ${
+                deficiencyCountOf(item) > 0 ? "alert-box" : ""
+              }`}
+            >
               <p className="text-[11px] text-muted">#{index + 1}</p>
               <p className="truncate text-sm font-semibold text-ink">
                 {displayClassName(item.class_id)}
@@ -122,7 +131,9 @@ export function WeeklyBoard({
           <li key={row.classId}>
             <Link
               href={classHref(row.classId)}
-              className="flex items-baseline justify-between gap-2 rounded-lg border border-line bg-paper/80 px-2.5 py-2 hover:border-mint"
+              className={`flex items-baseline justify-between gap-2 rounded-lg border bg-paper/80 px-2.5 py-2 hover:border-mint ${
+                row.count > 0 ? "alert-box" : "border-line"
+              }`}
             >
               <span className="truncate text-sm font-semibold text-ink">
                 {displayClassName(row.classId)}
