@@ -1,3 +1,4 @@
+import { classIdAliases } from "@/lib/classes/ids";
 import type {
   CommentDoc,
   InspectionDoc,
@@ -56,7 +57,8 @@ export function getLocalInspections(): InspectionDoc[] {
 }
 
 export function getLocalInspectionsByClass(classId: string): InspectionDoc[] {
-  return getLocalInspections().filter((i) => i.class_id === classId);
+  const aliases = new Set(classIdAliases(classId));
+  return getLocalInspections().filter((i) => aliases.has(i.class_id));
 }
 
 export function getLocalItems(inspectionId: string): InspectionItemDoc[] {
@@ -93,7 +95,8 @@ export function getLocalComments(inspectionId?: string): CommentDoc[] {
 }
 
 export function getLocalCommentsByClass(classId: string): CommentDoc[] {
+  const aliases = new Set(classIdAliases(classId));
   return readJson<CommentDoc[]>(COMMENTS_KEY, [])
-    .filter((c) => c.class_id === classId)
+    .filter((c) => c.class_id && aliases.has(c.class_id))
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }

@@ -36,7 +36,7 @@ export function ClassDirectory({ classes }: { classes: ClassDoc[] }) {
                     href={`/classes/${c.class_id}`}
                     title={c.class_name}
                     aria-label={c.class_name}
-                    className="flex min-h-9 items-center justify-center rounded-md border border-line bg-white px-1 py-1.5 text-center text-xs font-medium transition hover:border-mint hover:bg-leaf/15 sm:min-h-10 sm:text-sm"
+                    className="flex min-h-9 items-center justify-center rounded-md border border-line bg-paper px-1 py-1.5 text-center text-xs font-medium transition hover:border-mint hover:bg-leaf/15 sm:min-h-10 sm:text-sm"
                   >
                     {chipLabel(c.class_name, grade)}
                   </Link>

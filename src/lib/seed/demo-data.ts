@@ -526,6 +526,7 @@ function buildSeed(): {
       class_id: spec.class_id,
       inspector_id: "admin",
       total_score: spec.score,
+      deficiency_count: spec.items.filter((it) => it.deduction < 0).length,
       summary_blog: spec.summary,
       status: spec.status,
       cover_photo_url: coverFor(spec.status, firstPhoto),
@@ -603,7 +604,11 @@ export function getTodayTopClasses(limit = 3): InspectionDoc[] {
       ? todayList
       : DEMO_INSPECTIONS.filter((i) => i.date === DEMO_INSPECTIONS[0]?.date);
   return [...pool]
-    .sort((a, b) => b.total_score - a.total_score)
+    .sort(
+      (a, b) =>
+        (a.deficiency_count ?? 0) - (b.deficiency_count ?? 0) ||
+        b.created_at.localeCompare(a.created_at),
+    )
     .slice(0, limit);
 }
 

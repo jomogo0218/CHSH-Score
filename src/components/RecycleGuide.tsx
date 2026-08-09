@@ -35,7 +35,7 @@ export function RecycleGuide() {
         <img
           src="/docs/sorting-training.png"
           alt="由衛生組精心規劃的分類特訓班，保證您不出3日必成為轟動嘉華的分類高手"
-          className="w-full max-w-lg rounded-lg border border-line bg-white"
+          className="w-full max-w-lg rounded-lg border border-line bg-paper"
         />
         <ul className="grid gap-2 sm:grid-cols-2">
           {RECYCLE_REMINDERS.map((item) => (

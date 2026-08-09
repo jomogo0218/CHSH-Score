@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { ClassDirectory } from "@/components/ClassDirectory";
-import { HallFeed, TopBoard } from "@/components/HallFeed";
+import { HallFeed, TopBoard, WeeklyBoard } from "@/components/HallFeed";
 import { SetupStatusBanner } from "@/components/SetupStatusBanner";
 import { FETCH_TTL_MS, setCached, withTtlCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { fetchLatestInspections } from "@/lib/firebase/firestore";
 import { getLocalInspections } from "@/lib/local/store";
+import { onInspectionUpdate } from "@/lib/live/inspection-events";
 import { useLiveFeedSubscription } from "@/lib/mqtt/useLiveFeed";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
 import {
@@ -16,7 +17,11 @@ import {
   getLatestFeed,
   getTodayTopClasses,
 } from "@/lib/seed/demo-data";
-import { taiwanDateString } from "@/lib/time/taiwan";
+import {
+  deficiencyCountOf,
+  weeklyDeficiencyByClass,
+} from "@/lib/scoring/deficiency";
+import { taiwanDateString, taiwanWeekEnd, taiwanWeekStart } from "@/lib/time/taiwan";
 import type { InspectionDoc, LiveFeedPayload } from "@/lib/types";
 
 function mergeFeed(
@@ -36,11 +41,12 @@ function mergeFeed(
 function liveToInspection(payload: LiveFeedPayload): InspectionDoc {
   const date = payload.created_at.slice(0, 10);
   return {
-    inspection_id: `${date}_${payload.class_id}`,
+    inspection_id: payload.inspection_id ?? `${date}_${payload.class_id}`,
     date,
     class_id: payload.class_id,
     inspector_id: "mqtt",
     total_score: payload.score,
+    deficiency_count: payload.deficiency_count,
     summary_blog: payload.note,
     status: payload.status ?? "pending_fix",
     cover_photo_url: payload.photo_url || undefined,
@@ -58,14 +64,25 @@ export function HallClient() {
     setFeed((prev) => {
       // 正式模式：即時更新只併入現有真實 feed，不夾帶 demo
       const next = mergeFeed([doc], [], prev);
-      setCached("hall:latest", next.slice(0, 30), FETCH_TTL_MS);
+      setCached("hall:latest", next.slice(0, 50), FETCH_TTL_MS);
       return next;
     });
     const name =
       getDemoClass(payload.class_id)?.class_name ?? payload.class_id;
-    setLiveHint(`即時更新：${name} ${payload.score} 分`);
+    const n = payload.deficiency_count ?? deficiencyCountOf(doc);
+    setLiveHint(`即時更新：${name} ${n === 0 ? "無缺失" : `缺失 ${n} 次`}`);
     setSource("mqtt");
   });
+
+  useEffect(() => {
+    return onInspectionUpdate((doc) => {
+      setFeed((prev) => {
+        const next = mergeFeed([doc], [], prev);
+        setCached("hall:latest", next.slice(0, 50), FETCH_TTL_MS);
+        return next;
+      });
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +96,7 @@ export function HallClient() {
         try {
           const result = await withTtlCache(
             "hall:latest",
-            () => fetchLatestInspections(30),
+            () => fetchLatestInspections(50),
             FETCH_TTL_MS,
           );
           remote = result.data;
@@ -113,7 +130,11 @@ export function HallClient() {
   const openFeed = feed.filter((i) => i.status !== "fixed");
   const top = [...openFeed]
     .filter((i) => i.date === today)
-    .sort((a, b) => b.total_score - a.total_score)
+    .sort(
+      (a, b) =>
+        deficiencyCountOf(a) - deficiencyCountOf(b) ||
+        b.created_at.localeCompare(a.created_at),
+    )
     .slice(0, 3);
   const topBoard =
     top.length > 0
@@ -121,6 +142,8 @@ export function HallClient() {
       : openFeed.length === 0
         ? getTodayTopClasses(3).filter((i) => i.status !== "fixed")
         : [];
+  const weekRows = weeklyDeficiencyByClass(feed);
+  const weekLabel = `${taiwanWeekStart().replaceAll("-", "/")}～${taiwanWeekEnd().replaceAll("-", "/")}`;
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -137,6 +160,7 @@ export function HallClient() {
       </section>
 
       {topBoard.length > 0 ? <TopBoard inspections={topBoard} /> : null}
+      <WeeklyBoard rows={weekRows} weekLabel={weekLabel} />
       <HallFeed items={openFeed.slice(0, 12)} />
       <ClassDirectory classes={allClasses} />
     </div>

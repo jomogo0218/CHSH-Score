@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { invalidateCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { markInspectionFixed } from "@/lib/firebase/firestore";
+import { broadcastInspection } from "@/lib/mqtt/broadcast";
 import { markLocalInspectionFixed } from "@/lib/local/store";
 import type { InspectionDoc, InspectionItemDoc } from "@/lib/types";
 
@@ -14,7 +15,7 @@ function ImprovedStamp() {
       className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/10"
       aria-hidden
     >
-      <span className="rotate-[-20deg] rounded-md border-[3px] border-mint bg-white/85 px-2.5 py-1 text-base font-black tracking-[0.35em] text-mint shadow-md sm:px-3 sm:text-lg">
+      <span className="rotate-[-20deg] rounded-md border-[3px] border-mint bg-paper/90 px-2.5 py-1 text-base font-black tracking-[0.35em] text-mint shadow-md sm:px-3 sm:text-lg">
         已改善
       </span>
     </div>
@@ -56,6 +57,7 @@ export function AlbumGrid({
       invalidateCache(`class:${classId}`);
       const updated = { ...insp, status: "fixed" as const };
       onInspectionUpdated?.(updated);
+      await broadcastInspection(updated);
       setMessage(`${insp.date} 已標為改善成功，已存入本班「歷史」檔案。`);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "標示失敗";
@@ -112,7 +114,7 @@ export function AlbumGrid({
         return (
           <article
             key={insp.inspection_id}
-            className="space-y-2 rounded-xl border border-line bg-white/70 p-2.5 sm:p-3"
+            className="space-y-2 rounded-xl border border-line bg-paper/70 p-2.5 sm:p-3"
           >
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-[family-name:var(--font-display)] text-base font-bold text-ink">

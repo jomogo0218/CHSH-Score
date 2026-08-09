@@ -6,6 +6,7 @@ import { FETCH_TTL_MS, setCached, withTtlCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { fetchLatestInspections } from "@/lib/firebase/firestore";
 import { getLocalInspections } from "@/lib/local/store";
+import { onInspectionUpdate } from "@/lib/live/inspection-events";
 import { useLiveFeedSubscription } from "@/lib/mqtt/useLiveFeed";
 import { getLatestFeed } from "@/lib/seed/demo-data";
 import type { InspectionDoc, LiveFeedPayload } from "@/lib/types";
@@ -27,11 +28,12 @@ function mergeFeed(
 function liveToInspection(payload: LiveFeedPayload): InspectionDoc {
   const date = payload.created_at.slice(0, 10);
   return {
-    inspection_id: `${date}_${payload.class_id}`,
+    inspection_id: payload.inspection_id ?? `${date}_${payload.class_id}`,
     date,
     class_id: payload.class_id,
     inspector_id: "mqtt",
     total_score: payload.score,
+    deficiency_count: payload.deficiency_count,
     summary_blog: payload.note,
     status: payload.status ?? "pending_fix",
     cover_photo_url: payload.photo_url || undefined,
@@ -46,7 +48,7 @@ export function BoardClient() {
     const doc = liveToInspection(payload);
     setItems((prev) => {
       const next = mergeFeed([doc], [], prev);
-      setCached("board:latest", next.slice(0, 20), FETCH_TTL_MS);
+      setCached("board:latest", next.slice(0, 50), FETCH_TTL_MS);
       return next;
     });
   });
@@ -62,7 +64,7 @@ export function BoardClient() {
         try {
           const result = await withTtlCache(
             "board:latest",
-            () => fetchLatestInspections(40),
+            () => fetchLatestInspections(50),
             FETCH_TTL_MS,
           );
           remote = result.data;
@@ -83,6 +85,16 @@ export function BoardClient() {
       cancelled = true;
       window.removeEventListener("focus", onFocus);
     };
+  }, []);
+
+  useEffect(() => {
+    return onInspectionUpdate((doc) => {
+      setItems((prev) => {
+        const next = mergeFeed([doc], [], prev);
+        setCached("board:latest", next.slice(0, 50), FETCH_TTL_MS);
+        return next;
+      });
+    });
   }, []);
 
   return <LiveBoard items={items} />;

@@ -24,6 +24,8 @@ export interface InspectionDoc {
   class_id: string;
   inspector_id: string;
   total_score: number;
+  /** 當日扣分項目數；舊資料可能沒有 */
+  deficiency_count?: number;
   summary_blog: string;
   status: InspectionStatus;
   cover_photo_url?: string;
@@ -68,4 +70,6 @@ export interface LiveFeedPayload {
   photo_url: string;
   created_at: string;
   status?: InspectionStatus;
+  inspection_id?: string;
+  deficiency_count?: number;
 }

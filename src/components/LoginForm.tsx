@@ -103,7 +103,7 @@ export function LoginForm() {
             value={email}
             disabled={status === "loading"}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-line bg-white px-3 py-2 outline-none focus:border-mint disabled:opacity-60"
+            className="w-full rounded-lg border border-line bg-paper px-3 py-2 outline-none focus:border-mint disabled:opacity-60"
           />
         </label>
         <label className="block space-y-1 text-sm">
@@ -115,7 +115,7 @@ export function LoginForm() {
             value={password}
             disabled={status === "loading"}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-line bg-white px-3 py-2 outline-none focus:border-mint disabled:opacity-60"
+            className="w-full rounded-lg border border-line bg-paper px-3 py-2 outline-none focus:border-mint disabled:opacity-60"
           />
         </label>
 

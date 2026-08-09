@@ -78,7 +78,7 @@ export function Guestbook({
   );
   const [authorName, setAuthorName] = useState("導師");
   const [content, setContent] = useState(DEFAULT_FIX_NOTE);
-  const [markFixed, setMarkFixed] = useState(true);
+  const [markFixed, setMarkFixed] = useState(!compact);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [photos, setPhotos] = useState<PendingPhoto[]>([]);
@@ -132,13 +132,14 @@ export function Guestbook({
       const note = content.trim() || DEFAULT_FIX_NOTE;
       const name = authorName.trim() || "導師";
       const savedList: CommentDoc[] = [];
+      const willMarkFixed = compact ? false : markFixed;
 
       for (let i = 0; i < list.length; i++) {
         const photo = list[i];
         const photoUrl = await uploadFixPhoto(photo.file, classId);
         const noteForPhoto =
           list.length > 1 ? `${note}（${i + 1}/${list.length}）` : note;
-        const shouldMarkFixed = markFixed && i === list.length - 1;
+        const shouldMarkFixed = willMarkFixed && i === list.length - 1;
 
         if (isFirebaseConfigured()) {
           const saved = await postComment({
@@ -171,9 +172,11 @@ export function Guestbook({
       setComments((prev) => [...savedList, ...prev]);
       invalidateCache(`class:${classId}`);
       setMessage(
-        markFixed
-          ? `已送出 ${savedList.length} 張佐證，並標為已銷案`
-          : `已送出 ${savedList.length} 張佐證（累積保留）`,
+        compact
+          ? `已送出 ${savedList.length} 張佐證，等待巡察確認`
+          : markFixed
+            ? `已送出 ${savedList.length} 張佐證，並標為已銷案`
+            : `已送出 ${savedList.length} 張佐證（累積保留）`,
       );
       setPhotoQueue([]);
       setContent(DEFAULT_FIX_NOTE);
@@ -212,7 +215,7 @@ export function Guestbook({
         <h3 className="font-semibold text-ink">拍照回報</h3>
         {compact ? (
           <p className="text-sm text-muted">
-            不必登入。連拍按「完成並送出」就會上傳；相簿選完再按送出。
+            不必登入。連拍按「完成並送出」就會上傳；相簿選完再按送出。送出後仍待巡察確認，不會自動銷案。
           </p>
         ) : (
           <p className="text-sm text-muted">
@@ -230,7 +233,7 @@ export function Guestbook({
             <select
               value={inspectionId}
               onChange={(e) => setInspectionId(e.target.value)}
-              className="w-full rounded-lg border border-line bg-white px-3 py-2"
+              className="w-full rounded-lg border border-line bg-paper px-3 py-2"
               required
             >
               {selectable.length === 0 ? (
@@ -259,7 +262,7 @@ export function Guestbook({
             type="button"
             disabled={busy}
             onClick={() => albumRef.current?.click()}
-            className="rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold text-ink hover:bg-leaf/10 disabled:opacity-50"
+            className="rounded-lg border border-line bg-paper px-4 py-3 text-sm font-semibold text-ink hover:bg-leaf/10 disabled:opacity-50"
           >
             相簿（可多選）
           </button>
@@ -338,7 +341,7 @@ export function Guestbook({
             ))}
           </div>
         ) : (
-          <p className="rounded-lg border border-dashed border-line bg-white/70 px-3 py-6 text-center text-sm text-muted">
+          <p className="rounded-lg border border-dashed border-line bg-paper/70 px-3 py-6 text-center text-sm text-muted">
             尚未拍照 — 請按「連拍」或「相簿」
           </p>
         )}
@@ -352,7 +355,7 @@ export function Guestbook({
                 value={authorName}
                 onChange={(e) => setAuthorName(e.target.value)}
                 placeholder="例如：導師／衛生股長"
-                className="w-full rounded-lg border border-line bg-white px-3 py-2"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2"
               />
             </label>
 
@@ -363,7 +366,7 @@ export function Guestbook({
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder={DEFAULT_FIX_NOTE}
-                className="w-full rounded-lg border border-line bg-white px-3 py-2"
+                className="w-full rounded-lg border border-line bg-paper px-3 py-2"
               />
             </label>
 
@@ -393,7 +396,7 @@ export function Guestbook({
           {comments.map((c) => (
             <article
               key={c.comment_id}
-              className="rounded-xl border border-dashed border-line bg-white/60 p-4"
+              className="rounded-xl border border-dashed border-line bg-paper/60 p-4"
             >
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
                 <p className="font-semibold">{c.author_name}</p>

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-:root {
+:root,
+[data-theme="campus"] {
   --background: #e8f0eb;
   --foreground: #1a2e28;
   --paper: #f7fbf8;
@@ -20,8 +21,120 @@
   --border: #c5d6cc;
   --banner-from: #1f4d40;
   --banner-to: #3a7a62;
+  --fixed-ink: #9a6a14;
   --shadow-soft: 0 4px 14px rgba(26, 46, 40, 0.06);
+  --page-from: #dde9e2;
+  --page-to: #e4eee8;
   --font-display: var(--font-rounded), "M PLUS Rounded 1c", sans-serif;
+  color-scheme: light;
+}
+
+[data-theme="ink"] {
+  --background: #ebe4d4;
+  --foreground: #1c1915;
+  --paper: #f7f1e4;
+  --panel: #f4eee0;
+  --ink: #1c1915;
+  --ink-muted: #6a6256;
+  --muted: #6a6256;
+  --mint: #2c4a3e;
+  --leaf: #3d5c4e;
+  --accent: #2c4a3e;
+  --accent-strong: #1a2f28;
+  --accent-soft: #d4cbb8;
+  --sun: #b8860b;
+  --coral: #a33b2b;
+  --warn: #a33b2b;
+  --line: #d4cbb8;
+  --border: #d4cbb8;
+  --banner-from: #1a2f28;
+  --banner-to: #3d5c4e;
+  --fixed-ink: #8a6a18;
+  --shadow-soft: 0 4px 14px rgba(28, 25, 21, 0.08);
+  --page-from: #e6dcc8;
+  --page-to: #efe8d8;
+  color-scheme: light;
+}
+
+[data-theme="sun"] {
+  --background: #f3e8d8;
+  --foreground: #3b2418;
+  --paper: #fff8f0;
+  --panel: #fff6ec;
+  --ink: #3b2418;
+  --ink-muted: #8a6a52;
+  --muted: #8a6a52;
+  --mint: #c46a2d;
+  --leaf: #d4894a;
+  --accent: #c46a2d;
+  --accent-strong: #8f4a1c;
+  --accent-soft: #f0d8c0;
+  --sun: #e0a23a;
+  --coral: #b43c32;
+  --warn: #b43c32;
+  --line: #e8d2b8;
+  --border: #e8d2b8;
+  --banner-from: #8f4a1c;
+  --banner-to: #d4894a;
+  --fixed-ink: #9a6a14;
+  --shadow-soft: 0 4px 14px rgba(59, 36, 24, 0.08);
+  --page-from: #f0ddc6;
+  --page-to: #f7ebdc;
+  color-scheme: light;
+}
+
+[data-theme="night"] {
+  --background: #12161c;
+  --foreground: #e8eef4;
+  --paper: #1c232c;
+  --panel: #222a35;
+  --ink: #e8eef4;
+  --ink-muted: #8b9aab;
+  --muted: #8b9aab;
+  --mint: #5ec2a0;
+  --leaf: #3d8f72;
+  --accent: #5ec2a0;
+  --accent-strong: #3d8f72;
+  --accent-soft: #1f3d34;
+  --sun: #e0b35c;
+  --coral: #e07a68;
+  --warn: #e07a68;
+  --line: #334050;
+  --border: #334050;
+  --banner-from: #0f141a;
+  --banner-to: #1f3d34;
+  --fixed-ink: #e0b35c;
+  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --page-from: #0f141a;
+  --page-to: #151b22;
+  color-scheme: dark;
+}
+
+[data-theme="sky"] {
+  --background: #e7f0f8;
+  --foreground: #1a2a3a;
+  --paper: #f7fbfe;
+  --panel: #f4f9fd;
+  --ink: #1a2a3a;
+  --ink-muted: #5a7288;
+  --muted: #5a7288;
+  --mint: #2b6ea8;
+  --leaf: #3d8ec4;
+  --accent: #2b6ea8;
+  --accent-strong: #1d4f7a;
+  --accent-soft: #c5dceb;
+  --sun: #d9922f;
+  --coral: #c45a42;
+  --warn: #c45a42;
+  --line: #c5d4e0;
+  --border: #c5d4e0;
+  --banner-from: #1d4f7a;
+  --banner-to: #3d8ec4;
+  --fixed-ink: #9a6a14;
+  --shadow-soft: 0 4px 14px rgba(26, 42, 58, 0.07);
+  --page-from: #d9e7f2;
+  --page-to: #eaf2f8;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -35,12 +148,17 @@
   --color-sun: var(--sun);
   --color-coral: var(--coral);
   --color-line: var(--line);
+  --color-strong: var(--accent-strong);
   --font-sans: var(--font-noto), "Noto Sans TC", sans-serif;
 }
 
 body {
-  background:
-    linear-gradient(180deg, #dde9e2 0%, var(--background) 28%, #e4eee8 100%);
+  background: linear-gradient(
+    180deg,
+    var(--page-from) 0%,
+    var(--background) 28%,
+    var(--page-to) 100%
+  );
   color: var(--foreground);
   font-family: var(--font-noto), "Noto Sans TC", sans-serif;
   min-height: 100vh;
@@ -60,23 +178,23 @@ body {
 .panel {
   border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
   border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--panel) 96%, white);
+  background: var(--panel);
   box-shadow: var(--shadow-soft);
 }
 
 .status-pass {
-  background: color-mix(in srgb, var(--leaf) 18%, white);
+  background: color-mix(in srgb, var(--leaf) 22%, var(--paper));
   color: var(--mint);
 }
 
 .status-pending_fix {
-  background: color-mix(in srgb, var(--coral) 16%, white);
+  background: color-mix(in srgb, var(--coral) 20%, var(--paper));
   color: var(--coral);
 }
 
 .status-fixed {
-  background: color-mix(in srgb, var(--sun) 18%, white);
-  color: #9a6a14;
+  background: color-mix(in srgb, var(--sun) 22%, var(--paper));
+  color: var(--fixed-ink);
 }
 
 @keyframes rise-in {

@@ -9,6 +9,8 @@ import {
   fetchInspectionsByClass,
   markInspectionFixed,
 } from "@/lib/firebase/firestore";
+import { broadcastInspection } from "@/lib/mqtt/broadcast";
+import { formatDeficiency, deficiencyCountOf } from "@/lib/scoring/deficiency";
 import {
   getLocalInspectionsByClass,
   markLocalInspectionFixed,
@@ -70,7 +72,7 @@ export function ConfirmImprovedPanel({
     if (external) setList(external);
   }, [external]);
 
-  const pending = list.filter((i) => i.status !== "fixed");
+  const pending = list.filter((i) => i.status === "pending_fix");
 
   async function onConfirm(insp: InspectionDoc) {
     const ok = window.confirm(
@@ -94,6 +96,7 @@ export function ConfirmImprovedPanel({
         ),
       );
       onInspectionUpdated?.(updated);
+      await broadcastInspection(updated);
       setMessage(`${insp.date} 已確認改善成功，已存入班級「歷史」檔案。`);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "標示失敗";
@@ -140,7 +143,7 @@ export function ConfirmImprovedPanel({
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-1">
                 <p className="text-sm font-semibold text-ink">
                   {(insp.date ?? "").replaceAll("-", "/") || insp.inspection_id}{" "}
-                  · {insp.total_score ?? "—"} 分
+                  · {formatDeficiency(deficiencyCountOf(insp))}
                 </p>
                 <p className="text-xs text-coral">
                   {STATUS_LABELS[insp.status] ?? insp.status ?? "未知"}

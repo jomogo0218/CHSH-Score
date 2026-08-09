@@ -7,7 +7,7 @@ import {
 
 function SectionBlock({ section }: { section: RubricSection }) {
   return (
-    <details className="rounded-lg border border-line bg-paper/80 open:bg-white">
+    <details className="rounded-lg border border-line bg-paper/80 open:bg-paper">
       <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
         <span className="flex items-center justify-between gap-2">
           {section.title}

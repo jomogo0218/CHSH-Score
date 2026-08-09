@@ -51,7 +51,7 @@ export function ClassRosterPicker({
                     className={`flex min-h-9 items-center justify-center rounded-md border px-1 py-1.5 text-center text-xs font-medium transition sm:min-h-10 sm:text-sm ${
                       selected
                         ? "border-mint bg-mint text-white"
-                        : "border-line bg-white text-ink hover:border-mint hover:bg-leaf/15"
+                        : "border-line bg-paper text-ink hover:border-mint hover:bg-leaf/15"
                     }`}
                   >
                     {chipLabel(c.class_name, grade)}

@@ -13,6 +13,12 @@ type Shot = {
   bytes: number;
 };
 
+export type BurstCameraItem = {
+  id: string;
+  label: string;
+  remaining?: number;
+};
+
 type Props = {
   open: boolean;
   title?: string;
@@ -22,6 +28,10 @@ type Props = {
   /** getUserMedia 失敗時改走系統相機 */
   onFallback?: () => void;
   doneLabel?: string;
+  /** 巡察連拍時可切換評分項目，不必關相機 */
+  items?: BurstCameraItem[];
+  activeItemId?: string;
+  onItemChange?: (id: string) => void;
 };
 
 function stopStream(stream: MediaStream | null) {
@@ -39,6 +49,9 @@ export function BurstCamera({
   onCapture,
   onFallback,
   doneLabel = "完成",
+  items,
+  activeItemId,
+  onItemChange,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -154,6 +167,31 @@ export function BurstCamera({
           {doneLabel}
         </button>
       </header>
+
+      {items && items.length > 0 ? (
+        <div className="flex gap-1.5 overflow-x-auto px-3 pb-2">
+          {items.map((it) => {
+            const active = it.id === activeItemId;
+            return (
+              <button
+                key={it.id}
+                type="button"
+                onClick={() => onItemChange?.(it.id)}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                  active ? "bg-mint text-white" : "bg-white/15 text-white/85"
+                }`}
+              >
+                {it.label}
+                {typeof it.remaining === "number" ? (
+                  <span className="ml-1 font-normal opacity-80">
+                    {it.remaining}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
 
       <div className="relative min-h-0 flex-1">
         <video

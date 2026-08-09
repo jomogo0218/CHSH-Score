@@ -3,6 +3,11 @@ import type { InspectionDoc } from "@/lib/types";
 import { resolveClassId } from "@/lib/classes/resolve-id";
 import { getDemoClass } from "@/lib/seed/demo-data";
 import { STATUS_LABELS } from "@/lib/constants";
+import {
+  deficiencyCountOf,
+  formatDeficiency,
+  weeklyDeficiencyByClass,
+} from "@/lib/scoring/deficiency";
 
 function classLabel(classId: string): string {
   const resolved = resolveClassId(classId) ?? classId;
@@ -43,6 +48,9 @@ export function LiveBoard({ items }: { items: InspectionDoc[] }) {
   const openItems = items.filter((i) => i.status !== "fixed");
   const tiles = latestPerClass(openItems).slice(0, 24);
   const newest = tiles[0];
+  const weekly = new Map(
+    weeklyDeficiencyByClass(items).map((r) => [r.classId, r.count]),
+  );
 
   return (
     <div className="space-y-3">
@@ -52,12 +60,13 @@ export function LiveBoard({ items }: { items: InspectionDoc[] }) {
             即時看板
           </h1>
           <p className="text-xs text-muted">
-            僅顯示尚未銷案 · 已改善請至班級「歷史」查看
+            僅顯示尚未銷案 · 數字為缺失次數 · 本週累計見小字
           </p>
         </div>
         {newest ? (
           <p className="text-xs text-muted">
-            最新：{classLabel(newest.class_id)} {newest.total_score} 分
+            最新：{classLabel(newest.class_id)}{" "}
+            {formatDeficiency(deficiencyCountOf(newest))}
           </p>
         ) : null}
       </header>
@@ -68,29 +77,36 @@ export function LiveBoard({ items }: { items: InspectionDoc[] }) {
         </p>
       ) : (
         <section className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {tiles.map((item) => (
-            <Link
-              key={item.inspection_id}
-              href={classHref(item.class_id)}
-              className={`panel flex flex-col gap-1 rounded-lg border p-2.5 transition hover:-translate-y-0.5 hover:border-mint sm:p-3 ${statusTone(item.status)}`}
-            >
-              <div className="flex items-start justify-between gap-1">
-                <p className="min-w-0 truncate text-xs font-semibold text-ink sm:text-sm">
-                  {classLabel(item.class_id)}
+          {tiles.map((item) => {
+            const weekCount = weekly.get(item.class_id);
+            return (
+              <Link
+                key={item.inspection_id}
+                href={classHref(item.class_id)}
+                className={`panel flex flex-col gap-1 rounded-lg border p-2.5 transition hover:-translate-y-0.5 hover:border-mint sm:p-3 ${statusTone(item.status)}`}
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <p className="min-w-0 truncate text-xs font-semibold text-ink sm:text-sm">
+                    {classLabel(item.class_id)}
+                  </p>
+                  <span className="shrink-0 text-[10px] font-medium opacity-80">
+                    {STATUS_LABELS[item.status]}
+                  </span>
+                </div>
+                <p className="font-[family-name:var(--font-display)] text-3xl font-bold leading-none text-mint sm:text-4xl">
+                  {deficiencyCountOf(item)}
                 </p>
-                <span className="shrink-0 text-[10px] font-medium opacity-80">
-                  {STATUS_LABELS[item.status]}
-                </span>
-              </div>
-              <p className="font-[family-name:var(--font-display)] text-3xl font-bold leading-none text-mint sm:text-4xl">
-                {item.total_score}
-              </p>
-              <p className="line-clamp-2 text-[10px] leading-snug text-muted sm:text-[11px]">
-                {item.summary_blog}
-              </p>
-              <p className="mt-auto text-[10px] text-muted">{item.date}</p>
-            </Link>
-          ))}
+                <p className="text-[10px] text-muted">當日缺失</p>
+                {weekCount !== undefined ? (
+                  <p className="text-[10px] text-muted">本週累計 {weekCount}</p>
+                ) : null}
+                <p className="line-clamp-2 text-[10px] leading-snug text-muted sm:text-[11px]">
+                  {item.summary_blog}
+                </p>
+                <p className="mt-auto text-[10px] text-muted">{item.date}</p>
+              </Link>
+            );
+          })}
         </section>
       )}
     </div>

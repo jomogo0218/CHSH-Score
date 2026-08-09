@@ -12,6 +12,7 @@ import {
   getLocalItems,
 } from "@/lib/local/store";
 import { getCommentsForInspection, getItemsForInspection } from "@/lib/seed/demo-data";
+import { deficiencyCountOf, formatDeficiency } from "@/lib/scoring/deficiency";
 import type { CommentDoc, InspectionDoc, InspectionItemDoc } from "@/lib/types";
 
 function ImprovedStamp() {
@@ -20,7 +21,7 @@ function ImprovedStamp() {
       className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/10"
       aria-hidden
     >
-      <span className="rotate-[-20deg] rounded-md border-[3px] border-mint bg-white/85 px-2 py-0.5 text-sm font-black tracking-[0.3em] text-mint shadow-md">
+      <span className="rotate-[-20deg] rounded-md border-[3px] border-mint bg-paper/90 px-2 py-0.5 text-sm font-black tracking-[0.3em] text-mint shadow-md">
         已改善
       </span>
     </div>
@@ -158,7 +159,7 @@ export function CaseHistory({
           return (
             <li
               key={insp.inspection_id}
-              className="overflow-hidden rounded-xl border border-line bg-white/80"
+              className="overflow-hidden rounded-xl border border-line bg-paper/80"
             >
               <button
                 type="button"
@@ -175,6 +176,9 @@ export function CaseHistory({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-xs text-muted">
+                    {formatDeficiency(deficiencyCountOf(insp))}
+                  </span>
                   <StatusBadge status={insp.status} />
                   <span className="text-xs text-muted">
                     {loading ? "載入中…" : open ? "收合" : "查看"}
@@ -199,7 +203,7 @@ export function CaseHistory({
                       {detail.items.map((item) => (
                         <figure
                           key={item.item_id}
-                          className="overflow-hidden rounded-lg border border-line bg-white"
+                          className="overflow-hidden rounded-lg border border-line bg-paper"
                         >
                           <div className="relative">
                             {item.photo_url ? (
@@ -239,7 +243,7 @@ export function CaseHistory({
                       {detail.comments.map((c) => (
                         <div
                           key={c.comment_id}
-                          className="rounded-lg border border-line bg-white px-3 py-2"
+                          className="rounded-lg border border-line bg-paper px-3 py-2"
                         >
                           <div className="mb-1 flex flex-wrap items-baseline justify-between gap-1 text-xs text-muted">
                             <span className="font-semibold text-ink">

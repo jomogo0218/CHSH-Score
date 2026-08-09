@@ -14,8 +14,10 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { invalidateCache } from "@/lib/cache/ttl";
+import { classIdAliases } from "@/lib/classes/ids";
 import { getFirestoreDb, isFirebaseConfigured } from "@/lib/firebase/client";
 import { computeInspectionTotal } from "@/lib/constants/scoring-rubric";
+import { countDeficiencies, deficiencyCountOf } from "@/lib/scoring/deficiency";
 import { taiwanDateString } from "@/lib/time/taiwan";
 import type {
   ClassDoc,
@@ -27,8 +29,8 @@ import type {
   UserRole,
 } from "@/lib/types";
 
-/** 大廳／看板預設最多讀取筆數（控 Firestore 讀取） */
-export const LATEST_INSPECTIONS_LIMIT = 30;
+/** 大廳／看板預設最多讀取筆數（控 Firestore 讀取，略增以涵蓋本週累計） */
+export const LATEST_INSPECTIONS_LIMIT = 50;
 /** 班級頁巡檢＋歷史檔案上限 */
 export const CLASS_INSPECTIONS_LIMIT = 40;
 
@@ -45,32 +47,57 @@ export async function fetchClass(classId: string): Promise<ClassDoc | null> {
   return { class_id: snap.id, ...(snap.data() as DocumentData) } as ClassDoc;
 }
 
+function mapInspectionDocs(
+  docs: Array<{ id: string; data: () => DocumentData }>,
+): InspectionDoc[] {
+  return docs.map((d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc);
+}
+
 export async function fetchInspectionsByClass(
   classId: string,
   max = CLASS_INSPECTIONS_LIMIT,
 ): Promise<InspectionDoc[]> {
   const db = requireDb();
+  const aliases = classIdAliases(classId);
+
   try {
     const q = query(
       collection(db, "inspections"),
-      where("class_id", "==", classId),
+      where("class_id", "in", aliases),
       orderBy("date", "desc"),
       limit(max),
     );
     const snap = await getDocs(q);
-    return snap.docs.map(
-      (d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc,
-    );
+    return mapInspectionDocs(snap.docs);
   } catch {
-    // 缺複合索引時：仍限制回傳筆數，絕不掃全表
-    const q = query(
-      collection(db, "inspections"),
-      where("class_id", "==", classId),
-      limit(Math.min(max * 3, 40)),
+    // 缺 in+date 索引時：各別名分開查，絕不掃全表
+    const snaps = await Promise.all(
+      aliases.map((id) =>
+        getDocs(
+          query(
+            collection(db, "inspections"),
+            where("class_id", "==", id),
+            orderBy("date", "desc"),
+            limit(max),
+          ),
+        ).catch(() =>
+          getDocs(
+            query(
+              collection(db, "inspections"),
+              where("class_id", "==", id),
+              limit(Math.min(max * 3, 40)),
+            ),
+          ),
+        ),
+      ),
     );
-    const snap = await getDocs(q);
-    return snap.docs
-      .map((d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc)
+    const map = new Map<string, InspectionDoc>();
+    for (const snap of snaps) {
+      for (const d of snap.docs) {
+        map.set(d.id, { inspection_id: d.id, ...d.data() } as InspectionDoc);
+      }
+    }
+    return [...map.values()]
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, max);
   }
@@ -98,7 +125,19 @@ export async function fetchInspection(
   const db = requireDb();
   const snap = await getDoc(doc(db, "inspections", inspectionId));
   if (!snap.exists()) return null;
-  return snap.data() as InspectionDoc;
+  return { inspection_id: snap.id, ...snap.data() } as InspectionDoc;
+}
+
+/** 今日巡察：同時嘗試 j101 與舊碼 101 文件 ID */
+export async function fetchTodayInspection(
+  classId: string,
+): Promise<InspectionDoc | null> {
+  const date = taiwanDateString();
+  for (const id of classIdAliases(classId)) {
+    const found = await fetchInspection(`${date}_${id}`);
+    if (found) return found;
+  }
+  return null;
 }
 
 export async function fetchInspectionItems(
@@ -173,13 +212,30 @@ export async function publishInspection(
   }
   const db = requireDb();
   const date = taiwanDateString();
-  const inspectionId = `${date}_${input.classId}`;
   const mode = input.mode ?? "replace";
 
-  const existingSnap = await getDoc(doc(db, "inspections", inspectionId));
-  const existing = existingSnap.exists()
-    ? (existingSnap.data() as InspectionDoc)
-    : null;
+  let inspectionId = `${date}_${input.classId}`;
+  let existing: InspectionDoc | null = null;
+  const primarySnap = await getDoc(doc(db, "inspections", inspectionId));
+  if (primarySnap.exists()) {
+    existing = {
+      inspection_id: primarySnap.id,
+      ...primarySnap.data(),
+    } as InspectionDoc;
+  } else {
+    for (const alias of classIdAliases(input.classId)) {
+      if (alias === input.classId) continue;
+      const altId = `${date}_${alias}`;
+      const altSnap = await getDoc(doc(db, "inspections", altId));
+      if (!altSnap.exists()) continue;
+      inspectionId = altId;
+      existing = {
+        inspection_id: altSnap.id,
+        ...altSnap.data(),
+      } as InspectionDoc;
+      break;
+    }
+  }
 
   const newScores = input.categories
     .filter((c) => c.scored === true)
@@ -189,6 +245,7 @@ export async function publishInspection(
     }));
 
   let totalScore: number;
+  let deficiencyCount: number;
   let status: InspectionStatus;
   let summaryBlog = input.summaryBlog;
   let coverPhotoUrl = input.coverPhotoUrl;
@@ -235,6 +292,7 @@ export async function publishInspection(
       }
       const merged = [...scoreByCat.values()];
       totalScore = computeInspectionTotal(merged);
+      deficiencyCount = countDeficiencies(merged);
       const hasPenalty = merged.some((s) => s < 0);
       status = hasPenalty
         ? "pending_fix"
@@ -243,11 +301,13 @@ export async function publishInspection(
           : "pass";
     } else {
       totalScore = existing.total_score;
+      deficiencyCount = existing.deficiency_count ?? deficiencyCountOf(existing);
       status = existing.status;
     }
   } else {
     const scoresForTotal = newScores.map((s) => s.score);
     totalScore = computeInspectionTotal(scoresForTotal);
+    deficiencyCount = countDeficiencies(scoresForTotal);
     status = scoresForTotal.some((s) => s < 0) ? "pending_fix" : "pass";
   }
 
@@ -257,6 +317,7 @@ export async function publishInspection(
     class_id: input.classId,
     inspector_id: input.inspectorId,
     total_score: totalScore,
+    deficiency_count: deficiencyCount,
     summary_blog: summaryBlog,
     status,
     cover_photo_url: coverPhotoUrl,

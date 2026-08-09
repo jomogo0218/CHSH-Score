@@ -24,6 +24,10 @@ import {
   getInspectionsForClass,
   getItemsForInspection,
 } from "@/lib/seed/demo-data";
+import {
+  weeklyDeficiencyTotal,
+} from "@/lib/scoring/deficiency";
+import { taiwanWeekEnd, taiwanWeekStart } from "@/lib/time/taiwan";
 import type {
   ClassDoc,
   CommentDoc,
@@ -51,6 +55,8 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
   );
   const historyCount = inspections.filter((i) => i.status === "fixed").length;
   const needsReport = pendingInspections.length > 0;
+  const weeklyTotal = weeklyDeficiencyTotal(inspections, classId);
+  const weekLabel = `${taiwanWeekStart().replaceAll("-", "/")}～${taiwanWeekEnd().replaceAll("-", "/")}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -148,6 +154,17 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       </p>
 
       <ClassBanner classDoc={classDoc} />
+
+      <section className="panel px-3 py-2.5 sm:px-4">
+        <p className="text-sm text-ink">
+          本週累計缺失{" "}
+          <span className="font-[family-name:var(--font-display)] text-xl font-bold text-mint">
+            {weeklyTotal}
+          </span>{" "}
+          次
+        </p>
+        <p className="text-[11px] text-muted">{weekLabel}（週一至週日）</p>
+      </section>
 
       {!hasDemoProfile && inspections.length === 0 ? (
         <p className="rounded-lg border border-line bg-paper/80 px-3 py-2 text-sm text-muted">

@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { M_PLUS_Rounded_1c, Noto_Sans_TC } from "next/font/google";
 import { PwaRegister } from "@/components/PwaRegister";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SITE_NAME, SITE_SHORT_NAME, SITE_TAGLINE } from "@/lib/constants";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme/themes";
 import "./globals.css";
 
 const display = M_PLUS_Rounded_1c({
@@ -51,8 +53,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-Hant" className={`${display.variable} ${body.variable} h-full`}>
+    <html
+      lang="zh-Hant"
+      suppressHydrationWarning
+      className={`${display.variable} ${body.variable} h-full`}
+    >
       <body className="min-h-full antialiased">
+        <Script id="chsh-theme" strategy="beforeInteractive">
+          {THEME_BOOT_SCRIPT}
+        </Script>
         <PwaRegister />
         <SiteHeader />
         <main className="site-shell py-3 sm:py-5">{children}</main>

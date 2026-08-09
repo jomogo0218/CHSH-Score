@@ -13,7 +13,7 @@ import {
 } from "@/lib/firebase/client";
 import { subscribeAuth } from "@/lib/firebase/auth";
 import {
-  fetchInspection,
+  fetchTodayInspection,
   fetchUserProfile,
   publishInspection,
 } from "@/lib/firebase/firestore";
@@ -22,7 +22,7 @@ import {
   formatBytes,
 } from "@/lib/image/compress";
 import { saveLocalInspection } from "@/lib/local/store";
-import { publishLiveUpdate } from "@/lib/mqtt/publish";
+import { broadcastInspection } from "@/lib/mqtt/broadcast";
 import { uploadInspectionPhoto } from "@/lib/r2/upload";
 import {
   REPEAT_UNFIXED_PENALTY,
@@ -32,6 +32,10 @@ import {
   computeInspectionTotal,
   formatRubricScore,
 } from "@/lib/constants/scoring-rubric";
+import {
+  countDeficiencies,
+  formatDeficiency,
+} from "@/lib/scoring/deficiency";
 import { taiwanDateString } from "@/lib/time/taiwan";
 import type { InspectionDoc, InspectionStatus, UserDoc } from "@/lib/types";
 import type { User } from "firebase/auth";
@@ -90,6 +94,7 @@ export function InspectForm({ classId }: { classId?: string }) {
   const albumRef = useRef<HTMLInputElement>(null);
   const photoCountRef = useRef<Record<string, number>>({});
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const activeItemIdRef = useRef<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [summary, setSummary] = useState("");
   const [busy, setBusy] = useState(false);
@@ -128,7 +133,7 @@ export function InspectForm({ classId }: { classId?: string }) {
       return;
     }
     let cancelled = false;
-    void fetchInspection(todayId(classId))
+    void fetchTodayInspection(classId)
       .then((doc) => {
         if (!cancelled) setExistingToday(doc);
       })
@@ -146,6 +151,10 @@ export function InspectForm({ classId }: { classId?: string }) {
     }
   }, [items]);
 
+  useEffect(() => {
+    activeItemIdRef.current = activeItemId;
+  }, [activeItemId]);
+
   const isAdmin = profile?.role === "admin";
 
   const scoredItems = useMemo(
@@ -162,6 +171,13 @@ export function InspectForm({ classId }: { classId?: string }) {
   );
 
   const scoreDelta = totalScore - SCORE_BASE;
+  const deficiencyCount = useMemo(
+    () =>
+      countDeficiencies(
+        scoredItems.map((i) => effectiveScore(i) as number),
+      ),
+    [scoredItems],
+  );
   const photoCount = items.reduce((sum, i) => sum + i.photos.length, 0);
 
   function updateItem(itemId: string, patch: Partial<ItemState>) {
@@ -279,9 +295,10 @@ export function InspectForm({ classId }: { classId?: string }) {
   }
 
   async function onBurstCapture(file: File) {
-    if (!activeItemId) return;
+    const itemId = activeItemIdRef.current;
+    if (!itemId) return;
     try {
-      await ingestPhoto(file, activeItemId, true);
+      await ingestPhoto(file, itemId, true);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "上傳失敗");
     }
@@ -319,7 +336,7 @@ export function InspectForm({ classId }: { classId?: string }) {
     let existing = existingToday;
     if (isFirebaseConfigured() && auth?.currentUser) {
       try {
-        existing = await fetchInspection(todayId(classId));
+        existing = await fetchTodayInspection(classId);
         setExistingToday(existing);
       } catch {
         // ignore
@@ -424,6 +441,10 @@ export function InspectForm({ classId }: { classId?: string }) {
             publishMode === "append" && prevLocal && scores.length === 0
               ? prevLocal.total_score
               : computeInspectionTotal(scores),
+          deficiency_count:
+            publishMode === "append" && prevLocal && scores.length === 0
+              ? (prevLocal.deficiency_count ?? 0)
+              : countDeficiencies(scores),
           summary_blog:
             publishMode === "append" &&
             prevLocal?.summary_blog &&
@@ -471,18 +492,7 @@ export function InspectForm({ classId }: { classId?: string }) {
       invalidateCache("hall:");
       invalidateCache("board:");
 
-      try {
-        await publishLiveUpdate({
-          class_id: classId,
-          score: inspection.total_score,
-          note: inspection.summary_blog,
-          photo_url: inspection.cover_photo_url ?? "",
-          created_at: inspection.created_at,
-          status: inspection.status,
-        });
-      } catch {
-        // MQTT optional
-      }
+      await broadcastInspection(inspection);
 
       // 追加後清空本次已上傳照片，方便繼續巡下一區
       if (publishMode === "append") {
@@ -504,8 +514,8 @@ export function InspectForm({ classId }: { classId?: string }) {
       setMessage(
         wroteCloud
           ? publishMode === "append"
-            ? `已追加到雲端：${selected.class_name} ${inspection.total_score} 分（舊照片保留）。${statusHint}`
-            : `已覆寫發布：${selected.class_name} ${inspection.total_score} 分。${statusHint}`
+            ? `已追加到雲端：${selected.class_name} ${formatDeficiency(inspection.deficiency_count ?? deficiencyCount)}（舊照片保留）。${statusHint}`
+            : `已覆寫發布：${selected.class_name} ${formatDeficiency(inspection.deficiency_count ?? deficiencyCount)}。${statusHint}`
           : `僅存本機：${selected.class_name}。導師在其他裝置看不到，請先登入再發布。`,
       );
     } catch (err) {
@@ -532,7 +542,7 @@ export function InspectForm({ classId }: { classId?: string }) {
           巡察拍照與評分
         </h1>
         <p className="mt-1 text-sm text-muted">
-          依衛生組標準逐項點選加減分（基準 {SCORE_BASE}），可附照片佐證後發布。
+          依衛生組標準逐項點選；公開顯示改為「缺失次數」，基準分僅供內部對照。
         </p>
         <p className="mt-1.5 rounded-md bg-coral/10 px-2.5 py-1.5 text-xs text-coral">
           {SCORING_RUBRIC_META.globalNote}
@@ -582,15 +592,11 @@ export function InspectForm({ classId }: { classId?: string }) {
             </p>
             <div className="text-right">
               <p className="font-[family-name:var(--font-display)] text-2xl font-bold text-mint">
-                {totalScore}
+                {deficiencyCount}
               </p>
               <p className="text-[11px] text-muted">
-                {SCORE_BASE}
-                {scoreDelta === 0
-                  ? ""
-                  : scoreDelta > 0
-                    ? ` ${formatRubricScore(scoreDelta)}`
-                    : ` ${scoreDelta}`}
+                今日缺失
+                {scoreDelta !== 0 ? `｜對照 ${totalScore}` : ""}
               </p>
             </div>
           </div>
@@ -706,7 +712,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                                   setActiveItemId(rubricItem.id);
                                   setCameraOpen(true);
                                 }}
-                                className="rounded-md border border-line bg-white px-2 py-1 text-xs hover:border-mint disabled:opacity-50"
+                                className="rounded-md border border-line bg-paper px-2 py-1 text-xs hover:border-mint disabled:opacity-50"
                               >
                                 連拍
                               </button>
@@ -720,7 +726,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                                   setActiveItemId(rubricItem.id);
                                   albumRef.current?.click();
                                 }}
-                                className="rounded-md border border-line bg-white px-2 py-1 text-xs hover:border-mint disabled:opacity-50"
+                                className="rounded-md border border-line bg-paper px-2 py-1 text-xs hover:border-mint disabled:opacity-50"
                               >
                                 相簿
                               </button>
@@ -751,8 +757,8 @@ export function InspectForm({ classId }: { classId?: string }) {
                                         ? "border-coral bg-coral text-white"
                                         : level.score > 0
                                           ? "border-mint bg-mint text-white"
-                                          : "border-ink bg-ink text-white"
-                                      : "border-line bg-white text-ink hover:border-mint"
+                                          : "border-strong bg-strong text-white"
+                                      : "border-line bg-paper text-ink hover:border-mint"
                                   }`}
                                 >
                                   <span className="font-semibold tabular-nums">
@@ -852,6 +858,15 @@ export function InspectForm({ classId }: { classId?: string }) {
                       .length ??
                     0)
                 }
+                items={items.map((i) => ({
+                  id: i.itemId,
+                  label: i.category,
+                  remaining:
+                    MAX_PHOTOS_PER_ITEM -
+                    (photoCountRef.current[i.itemId] ?? i.photos.length),
+                }))}
+                activeItemId={activeItemId}
+                onItemChange={(id) => setActiveItemId(id)}
                 onClose={() => {
                   setCameraOpen(false);
                   setActiveItemId(null);
@@ -898,7 +913,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                     className={`max-w-full rounded-md border px-2 py-1 text-left text-[11px] leading-snug transition sm:text-xs ${
                       active
                         ? "border-mint bg-mint text-white"
-                        : "border-line bg-white text-ink hover:border-mint hover:bg-leaf/15"
+                        : "border-line bg-paper text-ink hover:border-mint hover:bg-leaf/15"
                     }`}
                   >
                     {preset}
@@ -933,7 +948,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                   ? "處理中…"
                   : existingToday
                     ? `追加發布（保留舊照片）`
-                    : `發布（${totalScore} 分）`}
+                    : `發布（${formatDeficiency(deficiencyCount)}）`}
               </button>
               {existingToday ? (
                 <button
@@ -954,8 +969,9 @@ export function InspectForm({ classId }: { classId?: string }) {
             </div>
             {existingToday ? (
               <p className="mt-2 text-[11px] text-muted">
-                今天已有紀錄（{existingToday.total_score}{" "}
-                分）。預設「追加」不會刪舊照片；只有按「整筆覆寫」才會清空重寫。
+                今天已有紀錄（
+                {formatDeficiency(existingToday.deficiency_count ?? 0)}
+                ）。預設「追加」不會刪舊照片；只有按「整筆覆寫」才會清空重寫。
               </p>
             ) : null}
             {message ? (

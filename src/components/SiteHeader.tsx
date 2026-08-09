@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { logoutAdmin, subscribeAuth } from "@/lib/firebase/auth";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { fetchUserProfile } from "@/lib/firebase/firestore";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/constants";
 
 type NavLink = { href: string; label: string };
@@ -106,6 +107,7 @@ export function SiteHeader() {
               </Link>
             );
           })}
+          <ThemeSwitcher />
           {authReady && isAdmin ? (
             <button
               type="button"
