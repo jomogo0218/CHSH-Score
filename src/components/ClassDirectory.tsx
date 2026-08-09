@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ClassDoc } from "@/lib/types";
 import { GRADE_LABELS, GRADE_ORDER } from "@/lib/constants";
+import { sameClass } from "@/lib/class-pin/storage";
 
 function chipLabel(className: string, grade: number): string {
   if (grade <= 3) {
@@ -10,7 +11,13 @@ function chipLabel(className: string, grade: number): string {
   return className.replace(/^高[一二三]/, "");
 }
 
-export function ClassDirectory({ classes }: { classes: ClassDoc[] }) {
+export function ClassDirectory({
+  classes,
+  highlightClassId,
+}: {
+  classes: ClassDoc[];
+  highlightClassId?: string | null;
+}) {
   return (
     <section className="panel animate-rise p-3 sm:p-4">
       <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-mint">
@@ -32,17 +39,22 @@ export function ClassDirectory({ classes }: { classes: ClassDoc[] }) {
                 <span className="ml-1 font-normal">（{list.length}）</span>
               </h3>
               <div className="grid grid-cols-6 gap-2">
-                {list.map((c) => (
-                  <Link
-                    key={c.class_id}
-                    href={`/classes/${c.class_id}`}
-                    title={c.class_name}
-                    aria-label={c.class_name}
-                    className="btn-block btn-chip w-full text-center font-medium"
-                  >
-                    {chipLabel(c.class_name, grade)}
-                  </Link>
-                ))}
+                {list.map((c) => {
+                  const mine = sameClass(c.class_id, highlightClassId);
+                  return (
+                    <Link
+                      key={c.class_id}
+                      href={`/classes/${c.class_id}`}
+                      title={c.class_name}
+                      aria-label={c.class_name}
+                      className={`btn-block btn-chip w-full text-center font-medium ${
+                        mine ? "btn-primary mine-box" : ""
+                      }`}
+                    >
+                      {chipLabel(c.class_name, grade)}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           );

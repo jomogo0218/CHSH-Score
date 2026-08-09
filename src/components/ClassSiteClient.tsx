@@ -7,6 +7,7 @@ import { AlbumGrid } from "@/components/AlbumGrid";
 import { CaseHistory } from "@/components/CaseHistory";
 import { ClassBanner } from "@/components/ClassBanner";
 import { Guestbook } from "@/components/Guestbook";
+import { PinClassBar } from "@/components/PinClassBar";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import {
   CLASS_INSPECTIONS_LIMIT,
@@ -26,9 +27,19 @@ import {
   getItemsForInspection,
 } from "@/lib/seed/demo-data";
 import {
+  deficiencyTotalInRange,
   weeklyDeficiencyTotal,
 } from "@/lib/scoring/deficiency";
-import { taiwanWeekEnd, taiwanWeekStart } from "@/lib/time/taiwan";
+import {
+  formatFixDeadlineLabel,
+  isFixOverdue,
+  taiwanMonthEnd,
+  taiwanMonthStart,
+  taiwanSemesterEnd,
+  taiwanSemesterStart,
+  taiwanWeekEnd,
+  taiwanWeekStart,
+} from "@/lib/time/taiwan";
 import type {
   ClassDoc,
   CommentDoc,
@@ -57,7 +68,23 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
   const historyCount = inspections.filter((i) => i.status === "fixed").length;
   const needsReport = pendingInspections.length > 0;
   const weeklyTotal = weeklyDeficiencyTotal(inspections, classId);
+  const monthlyTotal = deficiencyTotalInRange(
+    inspections,
+    classId,
+    taiwanMonthStart(),
+    taiwanMonthEnd(),
+  );
+  const semesterTotal = deficiencyTotalInRange(
+    inspections,
+    classId,
+    taiwanSemesterStart(),
+    taiwanSemesterEnd(),
+  );
   const weekLabel = `${taiwanWeekStart().replaceAll("-", "/")}～${taiwanWeekEnd().replaceAll("-", "/")}`;
+  const latestPending = pendingInspections[0];
+  const overdue = latestPending
+    ? isFixOverdue(latestPending.date, latestPending.status)
+    : false;
 
   useEffect(() => {
     let cancelled = false;
@@ -155,9 +182,10 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       </p>
 
       <ClassBanner classDoc={classDoc} />
+      <PinClassBar classId={classId} />
 
       <section
-        className={`panel px-3 py-2.5 sm:px-4 ${weeklyTotal > 0 ? "alert-box" : ""}`}
+        className={`panel px-3 py-2.5 sm:px-4 ${weeklyTotal > 0 || monthlyTotal > 0 ? "alert-box" : ""}`}
       >
         <p className="text-sm text-ink">
           本週累計缺失{" "}
@@ -167,6 +195,9 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
           次
         </p>
         <p className="text-[11px] text-muted">{weekLabel}（週一至週日）</p>
+        <p className="mt-1 text-xs text-muted">
+          本月 {monthlyTotal} 次 · 本學期 {semesterTotal} 次
+        </p>
       </section>
 
       {!hasDemoProfile && inspections.length === 0 ? (
@@ -178,9 +209,15 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
       <section
         className={`panel p-3 sm:p-4 ${needsReport ? "alert-box" : ""}`}
       >
-        <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
+        <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg font-bold text-mint">
           待改善
         </h2>
+        {latestPending ? (
+          <p className={`mb-3 text-xs ${overdue ? "font-semibold text-coral" : "text-muted"}`}>
+            {overdue ? "已逾時 · " : ""}
+            請於 {formatFixDeadlineLabel(latestPending.date)} 前拍照回報
+          </p>
+        ) : null}
         <AlbumGrid
           inspections={pendingInspections}
           itemsByInspection={itemsByInspection}

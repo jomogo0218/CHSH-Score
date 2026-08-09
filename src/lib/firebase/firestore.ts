@@ -31,6 +31,8 @@ import type {
 
 /** 大廳／看板預設最多讀取筆數（控 Firestore 讀取，略增以涵蓋本週累計） */
 export const LATEST_INSPECTIONS_LIMIT = 50;
+/** 學期榜：自學期初起，上限避免一次掃太多 */
+export const SEMESTER_INSPECTIONS_LIMIT = 500;
 /** 班級頁巡檢＋歷史檔案上限 */
 export const CLASS_INSPECTIONS_LIMIT = 40;
 
@@ -116,6 +118,25 @@ export async function fetchLatestInspections(
   return snap.docs.map(
     (d) => ({ inspection_id: d.id, ...d.data() }) as InspectionDoc,
   );
+}
+
+export async function fetchInspectionsSince(
+  startDate: string,
+  max = SEMESTER_INSPECTIONS_LIMIT,
+): Promise<InspectionDoc[]> {
+  const db = requireDb();
+  try {
+    const q = query(
+      collection(db, "inspections"),
+      where("date", ">=", startDate),
+      orderBy("date", "desc"),
+      limit(max),
+    );
+    const snap = await getDocs(q);
+    return mapInspectionDocs(snap.docs);
+  } catch {
+    return fetchLatestInspections(Math.min(max, 200));
+  }
 }
 
 export async function fetchInspection(

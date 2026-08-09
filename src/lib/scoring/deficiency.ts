@@ -1,5 +1,12 @@
 import { classIdAliases, resolveClassId } from "@/lib/classes/ids";
-import { taiwanWeekEnd, taiwanWeekStart } from "@/lib/time/taiwan";
+import {
+  taiwanMonthEnd,
+  taiwanMonthStart,
+  taiwanSemesterEnd,
+  taiwanSemesterStart,
+  taiwanWeekEnd,
+  taiwanWeekStart,
+} from "@/lib/time/taiwan";
 import type { InspectionDoc } from "@/lib/types";
 
 /** 評分表上每個扣分項目算 1 次缺失 */
@@ -58,12 +65,12 @@ export function weeklyDeficiencyTotal(
   return total;
 }
 
-export function weeklyDeficiencyByClass(
+export function deficiencyByClassInRange(
   inspections: InspectionDoc[],
-  weekOf?: string,
+  start: string,
+  end: string,
+  order: "asc" | "desc" = "asc",
 ): Array<{ classId: string; count: number }> {
-  const start = taiwanWeekStart(weekOf);
-  const end = taiwanWeekEnd(weekOf);
   const latest = new Map<string, InspectionDoc>();
 
   for (const item of inspections) {
@@ -83,5 +90,60 @@ export function weeklyDeficiencyByClass(
 
   return [...totals.entries()]
     .map(([classId, count]) => ({ classId, count }))
-    .sort((a, b) => a.count - b.count || a.classId.localeCompare(b.classId));
+    .sort(
+      (a, b) =>
+        (order === "desc" ? b.count - a.count : a.count - b.count) ||
+        a.classId.localeCompare(b.classId),
+    );
+}
+
+export function weeklyDeficiencyByClass(
+  inspections: InspectionDoc[],
+  weekOf?: string,
+): Array<{ classId: string; count: number }> {
+  return deficiencyByClassInRange(
+    inspections,
+    taiwanWeekStart(weekOf),
+    taiwanWeekEnd(weekOf),
+    "asc",
+  );
+}
+
+export function monthlyDeficiencyByClass(
+  inspections: InspectionDoc[],
+  monthOf?: string,
+): Array<{ classId: string; count: number }> {
+  return deficiencyByClassInRange(
+    inspections,
+    taiwanMonthStart(monthOf),
+    taiwanMonthEnd(monthOf),
+    "desc",
+  );
+}
+
+export function semesterDeficiencyByClass(
+  inspections: InspectionDoc[],
+  ofDate?: string,
+): Array<{ classId: string; count: number }> {
+  return deficiencyByClassInRange(
+    inspections,
+    taiwanSemesterStart(ofDate),
+    taiwanSemesterEnd(ofDate),
+    "desc",
+  );
+}
+
+export function deficiencyTotalInRange(
+  inspections: InspectionDoc[],
+  classId: string,
+  start: string,
+  end: string,
+): number {
+  const aliases = new Set(classIdAliases(classId));
+  const canonical = canonicalClassId(classId);
+  return (
+    deficiencyByClassInRange(inspections, start, end).find(
+      (row) => row.classId === canonical || aliases.has(row.classId),
+    )?.count ?? 0
+  );
 }

@@ -6,6 +6,7 @@ import { CLASS_ROSTER, SUMMARY_PRESETS } from "@/lib/constants";
 import { BurstCamera } from "@/components/BurstCamera";
 import { ClassRosterPicker } from "@/components/ClassRosterPicker";
 import { ConfirmImprovedPanel } from "@/components/ConfirmImprovedPanel";
+import { CopyLineButton } from "@/components/CopyLineButton";
 import { invalidateCache } from "@/lib/cache/ttl";
 import {
   getFirebaseAuth,
@@ -36,7 +37,18 @@ import {
   countDeficiencies,
   formatDeficiency,
 } from "@/lib/scoring/deficiency";
-import { taiwanDateString } from "@/lib/time/taiwan";
+import {
+  formatFixDeadlineLabel,
+  taiwanDateString,
+} from "@/lib/time/taiwan";
+import { buildFixLineText } from "@/lib/share/line-text";
+import { isNetworkError } from "@/lib/r2/fix-upload";
+import {
+  OFFLINE_PHOTO_DONE,
+  deleteJob,
+  enqueueJob,
+  flushOfflineQueue,
+} from "@/lib/offline/queue";
 import type { InspectionDoc, InspectionStatus, UserDoc } from "@/lib/types";
 import type { User } from "firebase/auth";
 
@@ -45,6 +57,8 @@ type PhotoEntry = {
   url: string;
   originalBytes: number;
   compressedBytes: number;
+  pending?: boolean;
+  queueId?: string;
 };
 
 type ItemState = {
@@ -106,6 +120,7 @@ export function InspectForm({ classId }: { classId?: string }) {
   const [existingToday, setExistingToday] = useState<InspectionDoc | null>(
     null,
   );
+  const [lineText, setLineText] = useState<string | null>(null);
 
   useEffect(() => {
     return subscribeAuth((next) => {
@@ -154,6 +169,35 @@ export function InspectForm({ classId }: { classId?: string }) {
   useEffect(() => {
     activeItemIdRef.current = activeItemId;
   }, [activeItemId]);
+
+  useEffect(() => {
+    const onDone = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        queueId: string;
+        photoId: string;
+        itemId: string;
+        photoUrl: string;
+      }>).detail;
+      if (!detail?.photoId) return;
+      setItems((prev) =>
+        prev.map((item) => ({
+          ...item,
+          photos: item.photos.map((photo) =>
+            photo.id === detail.photoId || photo.queueId === detail.queueId
+              ? {
+                  ...photo,
+                  url: detail.photoUrl,
+                  pending: false,
+                  queueId: undefined,
+                }
+              : photo,
+          ),
+        })),
+      );
+    };
+    window.addEventListener(OFFLINE_PHOTO_DONE, onDone);
+    return () => window.removeEventListener(OFFLINE_PHOTO_DONE, onDone);
+  }, []);
 
   const isAdmin = profile?.role === "admin";
 
@@ -205,6 +249,10 @@ export function InspectForm({ classId }: { classId?: string }) {
   }
 
   function removePhoto(itemId: string, photoId: string) {
+    const target = items
+      .find((i) => i.itemId === itemId)
+      ?.photos.find((p) => p.id === photoId);
+    if (target?.queueId) void deleteJob(target.queueId);
     setItems((prev) =>
       prev.map((i) =>
         i.itemId === itemId
@@ -233,25 +281,70 @@ export function InspectForm({ classId }: { classId?: string }) {
     try {
       const originalBytes = file.size;
       const compressed = await ensureInspectionPhotoSize(file);
-      const uploaded = await uploadInspectionPhoto(compressed, { classId });
-      const entry: PhotoEntry = {
-        id: newPhotoId(),
-        url: uploaded.photoUrl,
-        originalBytes,
-        compressedBytes: compressed.size,
-      };
-      setItems((prev) =>
-        prev.map((i) => {
-          if (i.itemId !== itemId) return i;
-          return {
-            ...i,
-            photos: [...i.photos, entry],
-            note: i.note || `${i.category}巡察佐證`,
-          };
-        }),
-      );
-      if (!keepOpen) {
-        setMessage(`${item.category} 已加 1 張。`);
+      try {
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          throw new Error("offline");
+        }
+        const uploaded = await uploadInspectionPhoto(compressed, { classId });
+        const entry: PhotoEntry = {
+          id: newPhotoId(),
+          url: uploaded.photoUrl,
+          originalBytes,
+          compressedBytes: compressed.size,
+        };
+        setItems((prev) =>
+          prev.map((i) => {
+            if (i.itemId !== itemId) return i;
+            return {
+              ...i,
+              photos: [...i.photos, entry],
+              note: i.note || `${i.category}巡察佐證`,
+            };
+          }),
+        );
+        if (!keepOpen) {
+          setMessage(`${item.category} 已加 1 張。`);
+        }
+        return;
+      } catch (err) {
+        if (!isNetworkError(err) && String(err) !== "Error: offline") {
+          throw err;
+        }
+        const photoId = newPhotoId();
+        const queueId = `insp_${photoId}`;
+        await enqueueJob({
+          id: queueId,
+          type: "inspect-photo",
+          classId,
+          itemId,
+          photoId,
+          name: compressed.name || "photo.jpg",
+          mime: compressed.type || "image/jpeg",
+          bytes: await compressed.arrayBuffer(),
+          originalBytes,
+          compressedBytes: compressed.size,
+          createdAt: new Date().toISOString(),
+          attempts: 0,
+        });
+        const entry: PhotoEntry = {
+          id: photoId,
+          url: URL.createObjectURL(compressed),
+          originalBytes,
+          compressedBytes: compressed.size,
+          pending: true,
+          queueId,
+        };
+        setItems((prev) =>
+          prev.map((i) => {
+            if (i.itemId !== itemId) return i;
+            return {
+              ...i,
+              photos: [...i.photos, entry],
+              note: i.note || `${i.category}巡察佐證`,
+            };
+          }),
+        );
+        setMessage("目前離線，照片已暫存，連上網後會自動上傳。");
       }
     } catch (err) {
       photoCountRef.current[itemId] = Math.max(
@@ -356,14 +449,45 @@ export function InspectForm({ classId }: { classId?: string }) {
       publishMode = "replace";
     }
 
+    let publishItems = items;
+    const pendingPhotos = items.flatMap((i) => i.photos.filter((p) => p.pending));
+    if (pendingPhotos.length > 0) {
+      setBusy(true);
+      setMessage("正在上傳離線暫存照片…");
+      const flushed = await flushOfflineQueue();
+      publishItems = items.map((item) => ({
+        ...item,
+        photos: item.photos.map((photo) =>
+          flushed.uploaded[photo.id]
+            ? {
+                ...photo,
+                url: flushed.uploaded[photo.id],
+                pending: false,
+                queueId: undefined,
+              }
+            : photo,
+        ),
+      }));
+      setItems(publishItems);
+      if (
+        publishItems.some((i) => i.photos.some((p) => p.pending)) ||
+        (typeof navigator !== "undefined" && !navigator.onLine)
+      ) {
+        setBusy(false);
+        setMessage("還有照片在離線佇列，請連上網後再發布。");
+        return;
+      }
+    }
+
     setBusy(true);
+    setLineText(null);
     setMessage(
       publishMode === "append"
         ? "正在追加照片／評分…"
         : "正在寫入班級相簿…",
     );
     try {
-      const withPhotos = items.filter((i) => i.photos.length > 0);
+      const withPhotos = publishItems.filter((i) => i.photos.length > 0);
       const cover = withPhotos[0]?.photos[0]?.url;
       const summaryBlog =
         summary.trim() ||
@@ -389,7 +513,7 @@ export function InspectForm({ classId }: { classId?: string }) {
           : "各區整潔，維持良好。");
 
       const inspectorId = auth?.currentUser?.uid ?? "local_inspector";
-      const payloadCats = items.map((c) => {
+      const payloadCats = publishItems.map((c) => {
         const sc = effectiveScore(c);
         const scored = sc !== null;
         const noteParts = [
@@ -511,11 +635,23 @@ export function InspectForm({ classId }: { classId?: string }) {
           : inspection.status === "fixed"
             ? "狀態已銷案。"
             : "狀態為待改善（含扣分項）。";
+      const publishedCount = inspection.deficiency_count ?? deficiencyCount;
+      setLineText(
+        buildFixLineText({
+          className: selected.class_name,
+          classId,
+          deficiencyCount: publishedCount,
+          deadlineLabel:
+            inspection.status === "pending_fix"
+              ? formatFixDeadlineLabel(inspection.date)
+              : undefined,
+        }),
+      );
       setMessage(
         wroteCloud
           ? publishMode === "append"
-            ? `已追加到雲端：${selected.class_name} ${formatDeficiency(inspection.deficiency_count ?? deficiencyCount)}（舊照片保留）。${statusHint}`
-            : `已覆寫發布：${selected.class_name} ${formatDeficiency(inspection.deficiency_count ?? deficiencyCount)}。${statusHint}`
+            ? `已追加到雲端：${selected.class_name} ${formatDeficiency(publishedCount)}（舊照片保留）。${statusHint}`
+            : `已覆寫發布：${selected.class_name} ${formatDeficiency(publishedCount)}。${statusHint}`
           : `僅存本機：${selected.class_name}。導師在其他裝置看不到，請先登入再發布。`,
       );
     } catch (err) {
@@ -829,8 +965,9 @@ export function InspectForm({ classId }: { classId?: string }) {
                                     ×
                                   </button>
                                   <p className="mt-0.5 truncate text-[10px] text-muted">
-                                    {formatBytes(p.originalBytes)}→
-                                    {formatBytes(p.compressedBytes)}
+                                    {p.pending
+                                      ? "離線暫存"
+                                      : `${formatBytes(p.originalBytes)}→${formatBytes(p.compressedBytes)}`}
                                   </p>
                                 </div>
                               ))}
@@ -979,7 +1116,8 @@ export function InspectForm({ classId }: { classId?: string }) {
                 className={`mt-2 text-sm ${
                   message.includes("失敗") ||
                   message.includes("沒有") ||
-                  message.includes("尚未")
+                  message.includes("尚未") ||
+                  message.includes("離線佇列")
                     ? "text-coral"
                     : "text-mint"
                 }`}
@@ -987,6 +1125,7 @@ export function InspectForm({ classId }: { classId?: string }) {
                 {message}
               </p>
             ) : null}
+            {lineText ? <CopyLineButton text={lineText} /> : null}
           </section>
         </>
       ) : null}

@@ -7,6 +7,7 @@ import { logoutAdmin, subscribeAuth } from "@/lib/firebase/auth";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { fetchUserProfile } from "@/lib/firebase/firestore";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { usePinnedClass } from "@/lib/class-pin/use-pinned-class";
 import { SITE_NAME, SITE_TAGLINE, TEACHER_ZONE_LABEL } from "@/lib/constants";
 
 type NavLink = { href: string; label: string };
@@ -35,6 +36,7 @@ export function SiteHeader() {
   const pathname = usePathname() ?? "/";
   const [isAdmin, setIsAdmin] = useState(false);
   const [authReady, setAuthReady] = useState(!isFirebaseConfigured());
+  const { classId: pinnedClassId } = usePinnedClass();
 
   useEffect(() => {
     if (!isFirebaseConfigured()) {
@@ -61,12 +63,13 @@ export function SiteHeader() {
   }, []);
 
   const classId = classIdFromPath(pathname);
+  const myClassId = pinnedClassId ?? classId;
   const links: NavLink[] = isAdmin
     ? STAFF_LINKS
     : [
         ...TEACHER_LINKS,
-        ...(classId
-          ? [{ href: `/classes/${classId}`, label: "本班" } satisfies NavLink]
+        ...(myClassId
+          ? [{ href: `/classes/${myClassId}`, label: "本班" } satisfies NavLink]
           : []),
       ];
 

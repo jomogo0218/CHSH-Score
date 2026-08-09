@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { ClassDirectory } from "@/components/ClassDirectory";
-import { HallFeed, TopBoard, WeeklyBoard } from "@/components/HallFeed";
+import { HallFeed, RankBoard, TopBoard, WeeklyBoard } from "@/components/HallFeed";
+import { MyClassCard } from "@/components/MyClassCard";
 import { SetupStatusBanner } from "@/components/SetupStatusBanner";
 import { FETCH_TTL_MS, setCached, withTtlCache } from "@/lib/cache/ttl";
+import { usePinnedClass } from "@/lib/class-pin/use-pinned-class";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
-import { fetchLatestInspections } from "@/lib/firebase/firestore";
+import {
+  SEMESTER_INSPECTIONS_LIMIT,
+  fetchInspectionsSince,
+} from "@/lib/firebase/firestore";
 import { getLocalInspections } from "@/lib/local/store";
 import { onInspectionUpdate } from "@/lib/live/inspection-events";
 import { useLiveFeedSubscription } from "@/lib/mqtt/useLiveFeed";
@@ -19,9 +24,19 @@ import {
 } from "@/lib/seed/demo-data";
 import {
   deficiencyCountOf,
+  monthlyDeficiencyByClass,
+  semesterDeficiencyByClass,
   weeklyDeficiencyByClass,
 } from "@/lib/scoring/deficiency";
-import { taiwanDateString, taiwanWeekEnd, taiwanWeekStart } from "@/lib/time/taiwan";
+import {
+  taiwanDateString,
+  taiwanMonthEnd,
+  taiwanMonthStart,
+  taiwanSemesterEnd,
+  taiwanSemesterStart,
+  taiwanWeekEnd,
+  taiwanWeekStart,
+} from "@/lib/time/taiwan";
 import type { InspectionDoc, LiveFeedPayload } from "@/lib/types";
 
 function mergeFeed(
@@ -58,13 +73,14 @@ export function HallClient() {
   const [feed, setFeed] = useState<InspectionDoc[]>(() => getLatestFeed());
   const [source, setSource] = useState("demo（預覽）");
   const [liveHint, setLiveHint] = useState<string | null>(null);
+  const { classId: pinnedClassId } = usePinnedClass();
+  const semesterStart = taiwanSemesterStart();
 
   useLiveFeedSubscription((payload) => {
     const doc = liveToInspection(payload);
     setFeed((prev) => {
-      // 正式模式：即時更新只併入現有真實 feed，不夾帶 demo
       const next = mergeFeed([doc], [], prev);
-      setCached("hall:latest", next.slice(0, 50), FETCH_TTL_MS);
+      setCached(`hall:since:${semesterStart}`, next.slice(0, SEMESTER_INSPECTIONS_LIMIT), FETCH_TTL_MS);
       return next;
     });
     const name =
@@ -78,11 +94,11 @@ export function HallClient() {
     return onInspectionUpdate((doc) => {
       setFeed((prev) => {
         const next = mergeFeed([doc], [], prev);
-        setCached("hall:latest", next.slice(0, 50), FETCH_TTL_MS);
+        setCached(`hall:since:${semesterStart}`, next.slice(0, SEMESTER_INSPECTIONS_LIMIT), FETCH_TTL_MS);
         return next;
       });
     });
-  }, []);
+  }, [semesterStart]);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,8 +111,8 @@ export function HallClient() {
       if (configured) {
         try {
           const result = await withTtlCache(
-            "hall:latest",
-            () => fetchLatestInspections(50),
+            `hall:since:${semesterStart}`,
+            () => fetchInspectionsSince(semesterStart, SEMESTER_INSPECTIONS_LIMIT),
             FETCH_TTL_MS,
           );
           remote = result.data;
@@ -106,7 +122,6 @@ export function HallClient() {
         }
       }
       if (cancelled) return;
-      // 雲端尚無真實巡察時顯示示範資料，方便預覽「運作一段時間」的畫面；有真實資料就不混入
       const demo =
         remote.length === 0 && local.length === 0 ? getLatestFeed() : [];
       const merged = mergeFeed(remote, local, demo);
@@ -124,7 +139,7 @@ export function HallClient() {
       cancelled = true;
       window.removeEventListener("focus", onFocus);
     };
-  }, []);
+  }, [semesterStart]);
 
   const today = taiwanDateString();
   const openFeed = feed.filter((i) => i.status !== "fixed");
@@ -143,7 +158,11 @@ export function HallClient() {
         ? getTodayTopClasses(3).filter((i) => i.status !== "fixed")
         : [];
   const weekRows = weeklyDeficiencyByClass(feed);
+  const monthRows = monthlyDeficiencyByClass(feed);
+  const semesterRows = semesterDeficiencyByClass(feed);
   const weekLabel = `${taiwanWeekStart().replaceAll("-", "/")}～${taiwanWeekEnd().replaceAll("-", "/")}`;
+  const monthLabel = `${taiwanMonthStart().replaceAll("-", "/")}～${taiwanMonthEnd().replaceAll("-", "/")}`;
+  const semesterLabel = `${taiwanSemesterStart().replaceAll("-", "/")}～${taiwanSemesterEnd().replaceAll("-", "/")}`;
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -164,10 +183,31 @@ export function HallClient() {
         </p>
       </section>
 
-      {topBoard.length > 0 ? <TopBoard inspections={topBoard} /> : null}
-      <WeeklyBoard rows={weekRows} weekLabel={weekLabel} />
-      <HallFeed items={openFeed.slice(0, 12)} />
-      <ClassDirectory classes={allClasses} />
+      {pinnedClassId ? (
+        <MyClassCard classId={pinnedClassId} inspections={feed} />
+      ) : null}
+      {topBoard.length > 0 ? (
+        <TopBoard inspections={topBoard} highlightClassId={pinnedClassId} />
+      ) : null}
+      <WeeklyBoard
+        rows={weekRows}
+        weekLabel={weekLabel}
+        highlightClassId={pinnedClassId}
+      />
+      <RankBoard
+        title="本月累計缺失"
+        hint={`${monthLabel} · 缺失多的在前`}
+        rows={monthRows}
+        highlightClassId={pinnedClassId}
+      />
+      <RankBoard
+        title="本學期累計缺失"
+        hint={`${semesterLabel}（上學期 8–1 月／下學期 2–7 月）`}
+        rows={semesterRows}
+        highlightClassId={pinnedClassId}
+      />
+      <HallFeed items={openFeed.slice(0, 12)} highlightClassId={pinnedClassId} />
+      <ClassDirectory classes={allClasses} highlightClassId={pinnedClassId} />
     </div>
   );
 }

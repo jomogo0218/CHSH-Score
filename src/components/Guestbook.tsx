@@ -14,6 +14,8 @@ import {
   getLocalCommentsByClass,
   saveLocalComment,
 } from "@/lib/local/store";
+import { enqueueJob } from "@/lib/offline/queue";
+import { isNetworkError, uploadFixPhoto } from "@/lib/r2/fix-upload";
 import type { CommentDoc, InspectionDoc } from "@/lib/types";
 
 const DEFAULT_FIX_NOTE = "已打掃完成，請複查。";
@@ -24,21 +26,6 @@ type PendingPhoto = {
   preview: string;
   label: string;
 };
-
-async function uploadFixPhoto(
-  file: File,
-  classId: string,
-): Promise<string> {
-  const form = new FormData();
-  form.append("file", file, "fix.jpg");
-  form.append("classId", classId);
-  const res = await fetch("/api/fix-report", { method: "POST", body: form });
-  const data = (await res.json()) as { photoUrl?: string; error?: string };
-  if (!res.ok || !data.photoUrl) {
-    throw new Error(data.error || "照片上傳失敗");
-  }
-  return data.photoUrl;
-}
 
 export function Guestbook({
   comments: initialComments,
@@ -134,6 +121,30 @@ export function Guestbook({
       const savedList: CommentDoc[] = [];
       const willMarkFixed = compact ? false : markFixed;
 
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        await enqueueJob({
+          id: `fix_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          type: "fix-report",
+          classId,
+          inspectionId,
+          authorName: name,
+          content: note,
+          markFixed: willMarkFixed,
+          photos: await Promise.all(
+            list.map(async (photo) => ({
+              name: photo.file.name || "fix.jpg",
+              mime: photo.file.type || "image/jpeg",
+              bytes: await photo.file.arrayBuffer(),
+            })),
+          ),
+          createdAt: new Date().toISOString(),
+          attempts: 0,
+        });
+        setPhotoQueue([]);
+        setMessage(`目前離線，已暫存 ${list.length} 張。連上網後會自動送出。`);
+        return;
+      }
+
       for (let i = 0; i < list.length; i++) {
         const photo = list[i];
         const photoUrl = await uploadFixPhoto(photo.file, classId);
@@ -181,6 +192,33 @@ export function Guestbook({
       setPhotoQueue([]);
       setContent(DEFAULT_FIX_NOTE);
     } catch (err) {
+      if (isNetworkError(err) && photosRef.current.length > 0) {
+        try {
+          await enqueueJob({
+            id: `fix_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            type: "fix-report",
+            classId,
+            inspectionId,
+            authorName: authorName.trim() || "導師",
+            content: content.trim() || DEFAULT_FIX_NOTE,
+            markFixed: compact ? false : markFixed,
+            photos: await Promise.all(
+              photosRef.current.map(async (photo) => ({
+                name: photo.file.name || "fix.jpg",
+                mime: photo.file.type || "image/jpeg",
+                bytes: await photo.file.arrayBuffer(),
+              })),
+            ),
+            createdAt: new Date().toISOString(),
+            attempts: 0,
+          });
+          setPhotoQueue([]);
+          setMessage("網路中斷，已暫存。連上網後會自動送出。");
+          return;
+        } catch {
+          // fall through
+        }
+      }
       const raw = err instanceof Error ? err.message : "送出失敗";
       const denied =
         /permission|insufficient|PERMISSION_DENIED/i.test(raw) ||
@@ -215,7 +253,7 @@ export function Guestbook({
         <h3 className="font-semibold text-ink">拍照回報</h3>
         {compact ? (
           <p className="text-sm text-muted">
-            不必登入。連拍按「完成並送出」就會上傳；相簿選完再按送出。送出後仍待巡察確認，不會自動銷案。
+            不必登入。連拍按「完成並送出」就會上傳；沒訊號會先暫存，連上網再自動送出。送出後仍待巡察確認，不會自動銷案。
           </p>
         ) : (
           <p className="text-sm text-muted">

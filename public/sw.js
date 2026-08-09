@@ -1,4 +1,4 @@
-const CACHE = "chsh-score-v5";
+const CACHE = "chsh-score-v6";
 const PRECACHE = ["/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -12,6 +12,36 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
     ).then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "notify" || !data.title) return;
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: data.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          void client.navigate?.(url);
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+      return undefined;
+    }),
   );
 });
 

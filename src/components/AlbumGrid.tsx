@@ -7,6 +7,7 @@ import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { markInspectionFixed } from "@/lib/firebase/firestore";
 import { broadcastInspection } from "@/lib/mqtt/broadcast";
 import { markLocalInspectionFixed } from "@/lib/local/store";
+import { isFixOverdue } from "@/lib/time/taiwan";
 import type { InspectionDoc, InspectionItemDoc } from "@/lib/types";
 
 function ImprovedStamp() {
@@ -122,7 +123,10 @@ export function AlbumGrid({
               <h3 className="font-[family-name:var(--font-display)] text-base font-bold text-ink">
                 {insp.date.replaceAll("-", "/")}
               </h3>
-              <StatusBadge status={insp.status} />
+              <StatusBadge
+                status={insp.status}
+                overdue={isFixOverdue(insp.date, insp.status)}
+              />
             </div>
             {insp.summary_blog ? (
               <p className="text-sm leading-relaxed text-ink">
