@@ -45,12 +45,12 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
   const [comments, setComments] = useState<CommentDoc[]>([]);
   const hasDemoProfile = DEMO_CLASSES.some((c) => c.class_id === classId);
 
-  const activeInspections = useMemo(
-    () => inspections.filter((i) => i.status !== "fixed"),
+  const pendingInspections = useMemo(
+    () => inspections.filter((i) => i.status === "pending_fix"),
     [inspections],
   );
-  const historyCount = inspections.length - activeInspections.length;
-  const needsReport = activeInspections.some((i) => i.status === "pending_fix");
+  const historyCount = inspections.filter((i) => i.status === "fixed").length;
+  const needsReport = pendingInspections.length > 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -160,7 +160,7 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
           待改善
         </h2>
         <AlbumGrid
-          inspections={activeInspections}
+          inspections={pendingInspections}
           itemsByInspection={itemsByInspection}
           classId={classId}
           mode="teacher"

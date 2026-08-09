@@ -20,7 +20,7 @@ export function HallFeed({ items }: { items: InspectionDoc[] }) {
           最新巡察
         </h2>
         <p className="text-xs text-muted">
-          只顯示待改善／合格；已銷案請至班級歷史
+          只顯示尚未銷案；已改善請至班級歷史
         </p>
       </div>
       {openItems.length === 0 ? (

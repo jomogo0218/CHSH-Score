@@ -82,6 +82,12 @@ export function Guestbook({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [photos, setPhotos] = useState<PendingPhoto[]>([]);
+  const photosRef = useRef<PendingPhoto[]>([]);
+
+  function setPhotoQueue(next: PendingPhoto[]) {
+    photosRef.current = next;
+    setPhotos(next);
+  }
 
   async function onPickPhotos(fileList: FileList | null) {
     if (!fileList?.length) return;
@@ -98,7 +104,7 @@ export function Guestbook({
           label: `${formatBytes(raw.size)}→${formatBytes(compressed.size)}`,
         });
       }
-      setPhotos((prev) => [...prev, ...added]);
+      setPhotoQueue([...photosRef.current, ...added]);
       setMessage(`已加入 ${added.length} 張佐證（可再拍，不會覆蓋舊回報）`);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "壓縮失敗");
@@ -109,13 +115,13 @@ export function Guestbook({
     }
   }
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function submitReport(queue?: PendingPhoto[]) {
+    const list = queue ?? photosRef.current;
     if (!inspectionId) {
       setMessage("請選擇要回覆的巡檢紀錄");
       return;
     }
-    if (photos.length === 0) {
+    if (list.length === 0) {
       setMessage("請先拍照或從相簿選佐證照片。");
       return;
     }
@@ -127,13 +133,12 @@ export function Guestbook({
       const name = authorName.trim() || "導師";
       const savedList: CommentDoc[] = [];
 
-      for (let i = 0; i < photos.length; i++) {
-        const photo = photos[i];
+      for (let i = 0; i < list.length; i++) {
+        const photo = list[i];
         const photoUrl = await uploadFixPhoto(photo.file, classId);
         const noteForPhoto =
-          photos.length > 1 ? `${note}（${i + 1}/${photos.length}）` : note;
-        // 只在最後一張時標銷案，避免中途狀態跳動
-        const shouldMarkFixed = markFixed && i === photos.length - 1;
+          list.length > 1 ? `${note}（${i + 1}/${list.length}）` : note;
+        const shouldMarkFixed = markFixed && i === list.length - 1;
 
         if (isFirebaseConfigured()) {
           const saved = await postComment({
@@ -167,10 +172,10 @@ export function Guestbook({
       invalidateCache(`class:${classId}`);
       setMessage(
         markFixed
-          ? `已新增 ${savedList.length} 張佐證（累積保留）並標為已銷案`
-          : `已新增 ${savedList.length} 張佐證（累積保留，不覆蓋舊回報）`,
+          ? `已送出 ${savedList.length} 張佐證，並標為已銷案`
+          : `已送出 ${savedList.length} 張佐證（累積保留）`,
       );
-      setPhotos([]);
+      setPhotoQueue([]);
       setContent(DEFAULT_FIX_NOTE);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "送出失敗";
@@ -190,6 +195,11 @@ export function Guestbook({
     }
   }
 
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    await submitReport();
+  }
+
   const showInspectionSelect = !compact && selectable.length > 1;
   const showCommentList = !compact;
 
@@ -201,7 +211,9 @@ export function Guestbook({
       >
         <h3 className="font-semibold text-ink">拍照回報</h3>
         {compact ? (
-          <p className="text-sm text-muted">不必登入，拍完直接送出。</p>
+          <p className="text-sm text-muted">
+            不必登入。連拍按「完成並送出」就會上傳；相簿選完再按送出。
+          </p>
         ) : (
           <p className="text-sm text-muted">
             看到缺失後直接拍照上傳即可，
@@ -256,12 +268,18 @@ export function Guestbook({
           <BurstCamera
             open
             title="改善連拍"
-            remaining={Math.max(0, 10 - photos.length)}
-            onClose={() => setCameraOpen(false)}
+            remaining={Math.max(0, 10 - photosRef.current.length)}
+            doneLabel={compact ? "完成並送出" : "完成"}
+            onClose={() => {
+              setCameraOpen(false);
+              if (compact && photosRef.current.length > 0) {
+                void submitReport(photosRef.current);
+              }
+            }}
             onCapture={async (file) => {
               const compressed = await ensureInspectionPhotoSize(file);
-              setPhotos((prev) => [
-                ...prev,
+              setPhotoQueue([
+                ...photosRef.current,
                 {
                   id: `p_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
                   file: compressed,
@@ -307,7 +325,7 @@ export function Guestbook({
                   type="button"
                   disabled={busy}
                   onClick={() =>
-                    setPhotos((prev) => prev.filter((x) => x.id !== p.id))
+                    setPhotoQueue(photosRef.current.filter((x) => x.id !== p.id))
                   }
                   className="absolute right-1 top-1 rounded bg-black/60 px-1.5 text-[10px] text-white"
                 >
@@ -321,7 +339,7 @@ export function Guestbook({
           </div>
         ) : (
           <p className="rounded-lg border border-dashed border-line bg-white/70 px-3 py-6 text-center text-sm text-muted">
-            尚未拍照 — 請按「拍照」或「相簿」
+            尚未拍照 — 請按「連拍」或「相簿」
           </p>
         )}
 

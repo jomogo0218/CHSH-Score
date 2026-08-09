@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { isFirebaseConfigured, loginAsAdmin } from "@/lib/firebase/auth";
 import { SetupStatusBanner } from "@/components/SetupStatusBanner";
 
@@ -53,6 +54,7 @@ function explainError(err: unknown): string {
 }
 
 export function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -72,7 +74,8 @@ export function LoginForm() {
       }
       await withTimeout(loginAsAdmin(email.trim(), password), 15_000);
       setStatus("success");
-      setMessage("登入成功！可以去上傳巡察照片了。");
+      setMessage("登入成功，正在前往巡察…");
+      router.push("/inspect");
     } catch (err) {
       setStatus("error");
       setMessage(explainError(err));

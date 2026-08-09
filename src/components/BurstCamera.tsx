@@ -21,6 +21,7 @@ type Props = {
   onCapture: (file: File) => void | Promise<void>;
   /** getUserMedia 失敗時改走系統相機 */
   onFallback?: () => void;
+  doneLabel?: string;
 };
 
 function stopStream(stream: MediaStream | null) {
@@ -37,6 +38,7 @@ export function BurstCamera({
   onClose,
   onCapture,
   onFallback,
+  doneLabel = "完成",
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -149,7 +151,7 @@ export function BurstCamera({
           onClick={onClose}
           className="rounded-lg bg-white/15 px-3 py-1.5 text-sm font-semibold"
         >
-          完成
+          {doneLabel}
         </button>
       </header>
 

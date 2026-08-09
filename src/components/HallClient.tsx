@@ -110,15 +110,16 @@ export function HallClient() {
   }, []);
 
   const today = taiwanDateString();
-  const top = [...feed]
+  const openFeed = feed.filter((i) => i.status !== "fixed");
+  const top = [...openFeed]
     .filter((i) => i.date === today)
     .sort((a, b) => b.total_score - a.total_score)
     .slice(0, 3);
   const topBoard =
     top.length > 0
       ? top
-      : feed.length === 0
-        ? getTodayTopClasses(3)
+      : openFeed.length === 0
+        ? getTodayTopClasses(3).filter((i) => i.status !== "fixed")
         : [];
 
   return (
@@ -136,7 +137,7 @@ export function HallClient() {
       </section>
 
       {topBoard.length > 0 ? <TopBoard inspections={topBoard} /> : null}
-      <HallFeed items={feed.slice(0, 12)} />
+      <HallFeed items={openFeed.slice(0, 12)} />
       <ClassDirectory classes={allClasses} />
     </div>
   );
