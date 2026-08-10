@@ -10,7 +10,6 @@ import {
   markInspectionFixed,
 } from "@/lib/firebase/firestore";
 import { broadcastInspection } from "@/lib/mqtt/broadcast";
-import { pushNotify } from "@/lib/notify/staff-push";
 import { formatDeficiency, deficiencyCountOf } from "@/lib/scoring/deficiency";
 import {
   getLocalInspectionsByClass,
@@ -98,12 +97,6 @@ export function ConfirmImprovedPanel({
       );
       onInspectionUpdated?.(updated);
       await broadcastInspection(updated);
-      pushNotify({
-        type: "fixed",
-        classId,
-        inspectionId: insp.inspection_id,
-        date: insp.date,
-      });
       setMessage(`${insp.date} 已確認改善成功，已存入班級「歷史」檔案。`);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "標示失敗";

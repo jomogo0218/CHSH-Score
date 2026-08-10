@@ -6,7 +6,6 @@ import { invalidateCache } from "@/lib/cache/ttl";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { markInspectionFixed } from "@/lib/firebase/firestore";
 import { broadcastInspection } from "@/lib/mqtt/broadcast";
-import { pushNotify } from "@/lib/notify/staff-push";
 import { markLocalInspectionFixed } from "@/lib/local/store";
 import { isFixOverdue } from "@/lib/time/taiwan";
 import type { InspectionDoc, InspectionItemDoc } from "@/lib/types";
@@ -60,12 +59,6 @@ export function AlbumGrid({
       const updated = { ...insp, status: "fixed" as const };
       onInspectionUpdated?.(updated);
       await broadcastInspection(updated);
-      pushNotify({
-        type: "fixed",
-        classId,
-        inspectionId: insp.inspection_id,
-        date: insp.date,
-      });
       setMessage(`${insp.date} 已標為改善成功，已存入本班「歷史」檔案。`);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "標示失敗";

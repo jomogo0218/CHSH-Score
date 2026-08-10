@@ -46,7 +46,7 @@ async function reply(chatId: number | string, text: string) {
 const HELP = [
   `嘉華體衛組 @${TELEGRAM_BOT_USERNAME}`,
   "組長：按「綁定組長」或傳 /start staff",
-  "導師：到本班網頁按「綁定 Telegram」",
+  "導師不必綁定，請用網頁導師區。",
   "取消：/stop",
   "組長早報：/早報",
   telegramStaffBindHref(),

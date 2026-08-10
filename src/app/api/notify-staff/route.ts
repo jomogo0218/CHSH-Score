@@ -8,6 +8,7 @@ import {
   requireAdminIfConfigured,
 } from "@/lib/firebase/verify-id-token";
 import { buildTelegramDigest } from "@/lib/notify/telegram-digest";
+import { buildInspectReminderText } from "@/lib/notify/inspect-reminder";
 import {
   ensureTelegramWebhook,
   routeTelegramNotify,
@@ -24,7 +25,8 @@ type NotifyType =
   | "supply_ready"
   | "supply_rejected"
   | "fixed"
-  | "digest";
+  | "digest"
+  | "inspect_reminder";
 
 type Body = {
   test?: boolean | string;
@@ -177,6 +179,8 @@ export async function POST(request: NextRequest) {
         ? "test"
         : body.test === "digest" || body.type === "digest"
           ? "digest"
+          : body.type === "inspect_reminder"
+            ? "inspect_reminder"
           : body.type === "fix" || (Array.isArray(body.photoUrls) && !body.itemId && !body.type)
             ? "fix"
             : body.type ?? "supply";
@@ -186,7 +190,7 @@ export async function POST(request: NextRequest) {
       if (denied) return denied;
       await ensureTelegramWebhook().catch(() => undefined);
       const text =
-        "【嘉華體衛組】Telegram 通知測試成功。\n之後會傳到這裡：領用、打掃回報、巡察缺失、每日 8 點早報。\n導師請在班級頁按「綁定 Telegram」。";
+        "【嘉華體衛組】Telegram 通知測試成功。\n之後會傳到這裡：領用、打掃回報、巡察缺失、每日 8 點早報、每天 07:30／12:30 巡察提醒。";
       const telegram = await sendTelegramMessage(text).catch((err: unknown) => ({
         skipped: false as const,
         error: err instanceof Error ? err.message : "Telegram 失敗",
@@ -205,6 +209,18 @@ export async function POST(request: NextRequest) {
         await deliver({
           staffText: digest.text,
           extra: { type: "digest", ...digest },
+        }),
+      );
+    }
+
+    if (type === "inspect_reminder") {
+      const denied = await requireAdmin(request);
+      if (denied) return denied;
+      const text = buildInspectReminderText();
+      return NextResponse.json(
+        await deliver({
+          staffText: text,
+          extra: { type: "inspect_reminder" },
         }),
       );
     }
@@ -263,16 +279,9 @@ export async function POST(request: NextRequest) {
       ]
         .filter(Boolean)
         .join("\n");
-      const teacherText = [
-        `【本班缺失】${className} 巡察缺失 ${count} 次`,
-        deadline ? `請於${deadline}前拍照回報` : "請盡快到班級頁拍照回報",
-        page,
-      ].join("\n");
       return NextResponse.json(
         await deliver({
           staffText,
-          teacherText,
-          teacherClassId: classId,
           photoUrls,
           extra: {
             type: "inspection",
@@ -285,35 +294,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (type === "fixed") {
-      const date = String(body.date ?? "").trim();
-      const teacherText = [
-        `【已銷案】${className}${date ? ` ${date.replaceAll("-", "/")}` : ""} 巡察已確認改善完成。`,
-        page,
-      ].join("\n");
-      return NextResponse.json(
-        await deliver({
-          teacherText,
-          teacherClassId: classId,
-          extra: { type: "fixed", classId, className, date },
-        }),
-      );
-    }
-
-    if (type === "supply_ready" || type === "supply_rejected") {
-      const itemLabel = String(body.itemLabel ?? "用品").trim().slice(0, 40);
-      const quantity = Math.max(1, Math.min(99, Math.floor(Number(body.quantity) || 1)));
-      const ready = type === "supply_ready";
-      const teacherText = ready
-        ? `【領用可取】${className} ${itemLabel} ×${quantity} 已可至學務處領取。\n${SITE_ORIGIN}/supply`
-        : `【領用未通過】${className} ${itemLabel} ×${quantity} 未通過，請向學務處確認。\n${SITE_ORIGIN}/supply`;
-      return NextResponse.json(
-        await deliver({
-          teacherText,
-          teacherClassId: classId,
-          extra: { type, classId, className, itemLabel, quantity },
-        }),
-      );
+    if (type === "fixed" || type === "supply_ready" || type === "supply_rejected") {
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: "導師不綁定 Telegram，此類通知僅顯示於網頁",
+      });
     }
 
     const itemId = String(body.itemId ?? "");

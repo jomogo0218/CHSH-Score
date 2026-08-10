@@ -26,7 +26,6 @@ import {
   readStaffNotifyEnabled,
   setStaffNotifyEnabled,
 } from "@/lib/notify/staff-alert";
-import { pushNotify } from "@/lib/notify/staff-push";
 import { telegramStaffBindHref } from "@/lib/notify/telegram-links";
 import {
   SUPPLY_ITEMS,
@@ -185,14 +184,6 @@ export function SupplyClient() {
       emitSupplyUpdate(next);
       setRows((prev) => mergeRows([next], prev));
       if (status === "ready") notifyTeacherSupplyReady(next);
-      if (status === "ready" || status === "rejected") {
-        pushNotify({
-          type: status === "ready" ? "supply_ready" : "supply_rejected",
-          classId: row.class_id,
-          itemLabel: row.item_label,
-          quantity: row.quantity,
-        });
-      }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "更新失敗");
     } finally {
@@ -244,6 +235,41 @@ export function SupplyClient() {
       setMessage("已發測試訊息到 Telegram，請到 @terry_stock_bot 查看。");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "測試失敗");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function testInspectReminder() {
+    setBusy(true);
+    setMessage("正在送巡察提醒…");
+    try {
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      const user = getFirebaseAuth()?.currentUser;
+      if (user) {
+        headers.Authorization = `Bearer ${await user.getIdToken()}`;
+      }
+      const res = await fetch("/api/notify-staff", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ type: "inspect_reminder" }),
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        telegram?: { ok?: boolean; skipped?: boolean; error?: string };
+      };
+      if (!res.ok) {
+        setMessage(data.error || "提醒失敗，請先登入組長");
+        return;
+      }
+      if (data.telegram?.error) {
+        setMessage(data.telegram.error);
+        return;
+      }
+      setMessage("已送巡察提醒到 Telegram。");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "提醒失敗");
     } finally {
       setBusy(false);
     }
@@ -399,6 +425,14 @@ export function SupplyClient() {
             >
               測試早報
             </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void testInspectReminder()}
+              className="btn-block px-3 py-2 text-sm"
+            >
+              測試巡察提醒
+            </button>
             <a
               href={telegramStaffBindHref()}
               target="_blank"
@@ -409,7 +443,7 @@ export function SupplyClient() {
             </a>
           </div>
           <p className="text-xs text-muted">
-            先按「綁定組長 Telegram」再按「測試」。導師請到班級頁綁定，才會收到本班缺失／可領取／已銷案。
+            先按「綁定組長 Telegram」再按「測試」。導師不必綁定，用網頁看導師區即可。
           </p>
           {rows.length === 0 ? (
             <p className="text-sm text-muted">尚無申請。</p>
@@ -508,7 +542,7 @@ export function SupplyClient() {
         <p className="font-semibold text-ink">即時通知可以接到哪裡？</p>
         <ul className="mt-1 list-disc space-y-1 pl-4">
           <li>
-            Telegram（@terry_stock_bot）：組長收領用、打掃回報、巡察缺失、每天早上 8 點早報（含逾時）。導師綁定後收本班扣分、可領取、已銷案。
+            Telegram（@terry_stock_bot）：只有組長要綁定。會收到領用、打掃回報、巡察缺失、每天 07:30／12:30 巡察提醒、早上 8 點早報。導師用網頁即可。
           </li>
           <li>網頁／PWA：組長開啟「領用通知」後，網頁開著也會跳出。</li>
           <li>LINE 官方帳號仍可另接；簡訊／iMessage 無法免費直連。</li>
