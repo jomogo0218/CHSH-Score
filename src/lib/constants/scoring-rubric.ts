@@ -67,7 +67,7 @@ export const SCORING_RUBRIC: ReadonlyArray<RubricSection> = [
         id: "windows",
         title: "門窗（盡量以走廊門窗為主）",
         range: "±2",
-        note: "特殊結構（如鐵條／鐵柱）：明顯有清潔痕跡即不得扣分；乾淨無污垢可再視程度 +1～+2。",
+        note: "本校為鋁門窗。明顯有擦拭痕跡即不得扣分；乾淨無污垢可再視程度 +1～+2。",
         levels: [
           { label: "光亮潔淨", score: 2 },
           { label: "乾淨有擦過的痕跡", score: 1 },
@@ -80,11 +80,11 @@ export const SCORING_RUBRIC: ReadonlyArray<RubricSection> = [
         id: "sink",
         title: "教室洗手台",
         range: "±1",
-        note: "直接傾倒湯汁／廚餘／茶渣致堵塞或惡臭：−2。他班跨區傾倒經查證可改扣違規班 −2。",
+        note: "洗手台下方須保持乾淨整齊。直接傾倒湯汁／廚餘／茶渣致堵塞或惡臭：−2。他班跨區傾倒經查證可改扣違規班 −2。",
         levels: [
-          { label: "檯面與水槽乾淨無積水／殘渣", score: 1 },
-          { label: "微髒或有些許水漬", score: 0 },
-          { label: "有殘渣、污垢或堵塞", score: -1 },
+          { label: "檯面、水槽與下方乾淨整齊，無積水／殘渣", score: 1 },
+          { label: "微髒、有些許水漬，或下方略亂", score: 0 },
+          { label: "有殘渣、污垢、堵塞，或下方明顯髒亂", score: -1 },
           { label: "違規傾倒湯汁／廚餘／茶渣", score: -2 },
         ],
       },
@@ -161,18 +161,46 @@ export const SCORING_RUBRIC: ReadonlyArray<RubricSection> = [
   {
     id: "restroom",
     title: "三、廁所區",
-    intro: "除垃圾桶外，其他區域有垃圾斟酌再扣分。",
+    intro:
+      "除垃圾桶外，其他區域有垃圾斟酌再扣分。小便斗上方平台為評分重點，須保持乾淨；上方感應器只能用抹布擦拭，禁止用水沖。緊急求救按鈕不可用水沖，碰水會壞掉。便所內置物平台須保持乾淨。刷洗清潔劑、小垃圾桶塑膠袋、洗手台肥皂請至學務處領取（可在「領用」申請）。",
     items: [
       {
         id: "toilets",
         title: "小便池與大便池／馬桶",
         range: "±2",
+        note: "小便斗上方感應器不能用水沖，要用抹布擦拭。緊急按鈕不能用水沖，碰水會壞掉。",
         levels: [
           { label: "沒任何污漬與異味", score: 2 },
           { label: "少許污漬", score: 1 },
           { label: "有尿垢、糞垢或異味", score: 0 },
           { label: "污垢卡很厚", score: -1 },
           { label: "長期卡厚垢未清理", score: -2 },
+        ],
+      },
+      {
+        id: "urinal-shelf",
+        title: "小便斗上方平台",
+        range: "±2",
+        note: "評分重點。平台要乾淨；上方感應器只能用抹布擦拭，不可用水沖。",
+        levels: [
+          { label: "平台乾淨無污垢、無積水", score: 2 },
+          { label: "大致乾淨，僅少許水漬", score: 1 },
+          { label: "微髒或有些許水漬／粉垢", score: 0 },
+          { label: "明顯污垢、積水或尿漬", score: -1 },
+          { label: "長期未擦、污垢明顯", score: -2 },
+        ],
+      },
+      {
+        id: "restroom-shelf",
+        title: "置物平台",
+        range: "±2",
+        note: "便所內置物平台要保持乾淨，勿堆放雜物或積污。",
+        levels: [
+          { label: "乾淨無雜物、無污垢", score: 2 },
+          { label: "大致整齊，僅少許水漬", score: 1 },
+          { label: "微髒或有些許雜物", score: 0 },
+          { label: "明顯污垢或雜物未清", score: -1 },
+          { label: "長期髒亂", score: -2 },
         ],
       },
       {

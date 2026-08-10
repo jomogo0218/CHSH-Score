@@ -15,6 +15,7 @@ import {
   saveLocalComment,
 } from "@/lib/local/store";
 import { enqueueJob } from "@/lib/offline/queue";
+import { pushStaffNotify } from "@/lib/notify/staff-push";
 import { isNetworkError, uploadFixPhoto } from "@/lib/r2/fix-upload";
 import type { CommentDoc, InspectionDoc } from "@/lib/types";
 
@@ -182,12 +183,22 @@ export function Guestbook({
 
       setComments((prev) => [...savedList, ...prev]);
       invalidateCache(`class:${classId}`);
+      pushStaffNotify({
+        type: "fix",
+        classId,
+        inspectionId,
+        authorName: name,
+        note,
+        photoUrls: savedList
+          .map((c) => c.reply_photo_url)
+          .filter((u): u is string => Boolean(u)),
+      });
       setMessage(
         compact
-          ? `已送出 ${savedList.length} 張佐證，等待巡察確認`
+          ? `已送出 ${savedList.length} 張佐證，並傳到組長 Telegram，等待巡察確認`
           : markFixed
-            ? `已送出 ${savedList.length} 張佐證，並標為已銷案`
-            : `已送出 ${savedList.length} 張佐證（累積保留）`,
+            ? `已送出 ${savedList.length} 張佐證，並傳到組長 Telegram，標為已銷案`
+            : `已送出 ${savedList.length} 張佐證（累積保留），並傳到組長 Telegram`,
       );
       setPhotoQueue([]);
       setContent(DEFAULT_FIX_NOTE);
@@ -253,7 +264,7 @@ export function Guestbook({
         <h3 className="font-semibold text-ink">拍照回報</h3>
         {compact ? (
           <p className="text-sm text-muted">
-            不必登入。連拍按「完成並送出」就會上傳；沒訊號會先暫存，連上網再自動送出。送出後仍待巡察確認，不會自動銷案。
+            不必登入。連拍按「完成並送出」就會上傳並傳到組長 Telegram；沒訊號會先暫存，連上網再自動送出。送出後仍待巡察確認，不會自動銷案。
           </p>
         ) : (
           <p className="text-sm text-muted">
@@ -261,7 +272,7 @@ export function Guestbook({
             <strong className="text-ink">不必登入</strong>
             。每次回報都會
             <strong className="text-ink">累積新增</strong>
-            ，不會蓋掉舊照片。
+            ，並傳到組長 Telegram，不會蓋掉舊照片。
           </p>
         )}
 

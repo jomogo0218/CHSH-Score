@@ -264,6 +264,10 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
         <Link href="/recycle" className="text-mint underline">
           資源回收分類
         </Link>
+        <span className="mx-1.5">·</span>
+        <Link href="/supply" className="text-mint underline">
+          學務處領用
+        </Link>
       </p>
     </div>
   );

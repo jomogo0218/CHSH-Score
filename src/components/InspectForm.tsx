@@ -24,6 +24,7 @@ import {
 } from "@/lib/image/compress";
 import { saveLocalInspection } from "@/lib/local/store";
 import { broadcastInspection } from "@/lib/mqtt/broadcast";
+import { pushNotify } from "@/lib/notify/staff-push";
 import { uploadInspectionPhoto } from "@/lib/r2/upload";
 import {
   REPEAT_UNFIXED_PENALTY,
@@ -617,6 +618,26 @@ export function InspectForm({ classId }: { classId?: string }) {
       invalidateCache("board:");
 
       await broadcastInspection(inspection);
+
+      const newPenalty = payloadCats.some((c) => c.scored && c.score_deduction < 0);
+      if (
+        inspection.status === "pending_fix" &&
+        (publishMode !== "append" || newPenalty)
+      ) {
+        pushNotify({
+          type: "inspection",
+          classId,
+          inspectionId: inspection.inspection_id,
+          deficiencyCount: inspection.deficiency_count ?? deficiencyCount,
+          summary: inspection.summary_blog,
+          date: inspection.date,
+          deadlineLabel: formatFixDeadlineLabel(inspection.date),
+          photoUrls: publishItems
+            .flatMap((c) => c.photos.map((p) => p.url))
+            .filter(Boolean)
+            .slice(0, 10),
+        });
+      }
 
       // 追加後清空本次已上傳照片，方便繼續巡下一區
       if (publishMode === "append") {

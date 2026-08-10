@@ -108,4 +108,5 @@ export const MQTT_TOPICS = {
   liveFeed: "school/clean/live_feed",
   classChannel: (classId: string) => `school/clean/class/${classId}`,
   button: (classId: string) => `school/button/${classId}`,
+  staffAlert: "school/clean/staff_alert",
 } as const;

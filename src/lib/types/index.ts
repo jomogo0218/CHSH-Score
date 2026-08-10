@@ -63,6 +63,33 @@ export interface UserDoc {
   class_id?: string;
 }
 
+export type SupplyStatus = "pending" | "ready" | "done" | "rejected";
+
+export interface SupplyRequestDoc {
+  request_id: string;
+  class_id: string;
+  item_id: string;
+  item_label: string;
+  quantity: number;
+  note: string;
+  applicant_name: string;
+  status: SupplyStatus;
+  created_at: string;
+  updated_at?: string;
+}
+
+export type TelegramBindingRole = "staff" | "teacher";
+
+export interface TelegramBindingDoc {
+  chat_id: string;
+  role: TelegramBindingRole;
+  class_id: string;
+  username?: string;
+  active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface LiveFeedPayload {
   class_id: string;
   score: number;

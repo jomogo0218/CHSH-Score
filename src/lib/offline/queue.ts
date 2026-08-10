@@ -1,5 +1,6 @@
 import { postComment } from "@/lib/firebase/firestore";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
+import { pushStaffNotify } from "@/lib/notify/staff-push";
 import { uploadInspectionPhoto } from "@/lib/r2/upload";
 import { uploadFixPhoto } from "@/lib/r2/fix-upload";
 import { saveLocalComment } from "@/lib/local/store";
@@ -145,12 +146,14 @@ async function flushInspectPhoto(job: InspectPhotoJob) {
 async function flushFixReport(job: FixReportJob) {
   const note = job.content.trim() || "已打掃完成，請複查。";
   const name = job.authorName.trim() || "導師";
+  const photoUrls: string[] = [];
   for (let i = 0; i < job.photos.length; i++) {
     const photo = job.photos[i];
     const file = new File([photo.bytes], photo.name || `fix_${i + 1}.jpg`, {
       type: photo.mime || "image/jpeg",
     });
     const photoUrl = await uploadFixPhoto(file, job.classId);
+    photoUrls.push(photoUrl);
     const noteForPhoto =
       job.photos.length > 1 ? `${note}（${i + 1}/${job.photos.length}）` : note;
     const shouldMarkFixed = job.markFixed && i === job.photos.length - 1;
@@ -180,6 +183,14 @@ async function flushFixReport(job: FixReportJob) {
     }
   }
   await deleteJob(job.id);
+  pushStaffNotify({
+    type: "fix",
+    classId: job.classId,
+    inspectionId: job.inspectionId,
+    authorName: name,
+    note,
+    photoUrls,
+  });
 }
 
 export async function flushOfflineQueue(): Promise<{

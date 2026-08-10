@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { M_PLUS_Rounded_1c, Noto_Sans_TC } from "next/font/google";
 import { ClassAlertListener } from "@/components/ClassAlertListener";
+import { StaffAlertListener } from "@/components/StaffAlertListener";
 import { ClickSound } from "@/components/ClickSound";
 import { OfflineSync } from "@/components/OfflineSync";
 import { PwaRegister } from "@/components/PwaRegister";
@@ -68,6 +69,7 @@ export default function RootLayout({
         <PwaRegister />
         <ClickSound />
         <ClassAlertListener />
+        <StaffAlertListener />
         <SiteHeader />
         <OfflineSync />
         <main className="site-shell py-3 sm:py-5">{children}</main>

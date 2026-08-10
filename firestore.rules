@@ -85,6 +85,54 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    function isGuestSupplyRequest() {
+      return request.resource.data.class_id is string
+        && request.resource.data.item_id is string
+        && request.resource.data.item_label is string
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity >= 1
+        && request.resource.data.quantity <= 99
+        && request.resource.data.applicant_name is string
+        && request.resource.data.applicant_name.size() > 0
+        && request.resource.data.applicant_name.size() <= 40
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 200
+        && request.resource.data.status == 'pending'
+        && request.resource.data.created_at is string
+        && request.resource.data.keys().hasAll([
+          'class_id', 'item_id', 'item_label', 'quantity',
+          'applicant_name', 'note', 'status', 'created_at'
+        ]);
+    }
+
+    match /supply_requests/{requestId} {
+      allow read: if true;
+      allow create: if isGuestSupplyRequest();
+      allow update, delete: if isAdmin();
+    }
+
+    function isTelegramBinding() {
+      return request.resource.data.chat_id is string
+        && request.resource.data.chat_id.size() > 0
+        && request.resource.data.chat_id.size() <= 32
+        && request.resource.data.role in ['staff', 'teacher']
+        && request.resource.data.class_id is string
+        && request.resource.data.class_id.size() <= 32
+        && request.resource.data.active is bool
+        && request.resource.data.created_at is string
+        && request.resource.data.keys().hasAll([
+          'chat_id', 'role', 'class_id', 'active', 'created_at'
+        ]);
+    }
+
+    match /telegram_bindings/{id} {
+      allow read: if true;
+      allow create: if isTelegramBinding();
+      allow update: if isTelegramBinding()
+        || request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['active', 'updated_at']);
+    }
+
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow create: if isAdmin();

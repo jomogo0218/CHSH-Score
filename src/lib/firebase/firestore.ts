@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   limit,
+  onSnapshot,
   orderBy,
   query,
   setDoc,
@@ -12,6 +13,7 @@ import {
   where,
   writeBatch,
   type DocumentData,
+  type Unsubscribe,
 } from "firebase/firestore";
 import { invalidateCache } from "@/lib/cache/ttl";
 import { classIdAliases } from "@/lib/classes/ids";
@@ -25,6 +27,8 @@ import type {
   InspectionDoc,
   InspectionItemDoc,
   InspectionStatus,
+  SupplyRequestDoc,
+  SupplyStatus,
   UserDoc,
   UserRole,
 } from "@/lib/types";
@@ -460,4 +464,83 @@ export async function markInspectionFixed(
   invalidateCache(`class:${classId}`);
   invalidateCache("hall:");
   invalidateCache("board:");
+}
+
+const SUPPLY_LIMIT = 80;
+
+function mapSupply(id: string, data: DocumentData): SupplyRequestDoc {
+  return { request_id: id, ...(data as Omit<SupplyRequestDoc, "request_id">) };
+}
+
+export async function createSupplyRequest(input: {
+  classId: string;
+  itemId: string;
+  itemLabel: string;
+  quantity: number;
+  note?: string;
+  applicantName: string;
+}): Promise<SupplyRequestDoc> {
+  const db = requireDb();
+  const createdAt = new Date().toISOString();
+  const payload = {
+    class_id: input.classId,
+    item_id: input.itemId,
+    item_label: input.itemLabel,
+    quantity: Math.max(1, Math.min(99, Math.floor(input.quantity))),
+    note: (input.note ?? "").trim().slice(0, 200),
+    applicant_name: input.applicantName.trim().slice(0, 40),
+    status: "pending" as const,
+    created_at: createdAt,
+  };
+  const ref = await addDoc(collection(db, "supply_requests"), payload);
+  return { request_id: ref.id, ...payload };
+}
+
+export async function fetchSupplyRequests(max = SUPPLY_LIMIT): Promise<SupplyRequestDoc[]> {
+  const db = requireDb();
+  try {
+    const q = query(
+      collection(db, "supply_requests"),
+      orderBy("created_at", "desc"),
+      limit(max),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => mapSupply(d.id, d.data()));
+  } catch {
+    const snap = await getDocs(collection(db, "supply_requests"));
+    return snap.docs
+      .map((d) => mapSupply(d.id, d.data()))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .slice(0, max);
+  }
+}
+
+export function subscribeSupplyRequests(
+  handler: (rows: SupplyRequestDoc[]) => void,
+  max = SUPPLY_LIMIT,
+): Unsubscribe {
+  const db = requireDb();
+  const q = query(
+    collection(db, "supply_requests"),
+    orderBy("created_at", "desc"),
+    limit(max),
+  );
+  return onSnapshot(
+    q,
+    (snap) => handler(snap.docs.map((d) => mapSupply(d.id, d.data()))),
+    () => {
+      void fetchSupplyRequests(max).then(handler).catch(() => handler([]));
+    },
+  );
+}
+
+export async function updateSupplyRequestStatus(
+  requestId: string,
+  status: SupplyStatus,
+): Promise<void> {
+  const db = requireDb();
+  await updateDoc(doc(db, "supply_requests", requestId), {
+    status,
+    updated_at: new Date().toISOString(),
+  });
 }

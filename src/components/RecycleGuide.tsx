@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const RECYCLE_REMINDERS = [
   {
     title: "紙類",
@@ -26,7 +28,11 @@ export function RecycleGuide() {
           資源回收分類提醒
         </h1>
         <p className="text-sm text-muted">
-          體衛組分類重點。詳細圖示請開啟完整寶典。
+          體衛組分類重點。詳細圖示請開啟完整寶典。清潔劑、小垃圾袋、洗手台肥皂請至
+          <Link href="/supply" className="text-mint underline">
+            學務處領用
+          </Link>
+          申請。
         </p>
       </header>
 

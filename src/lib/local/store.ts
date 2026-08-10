@@ -4,11 +4,14 @@ import type {
   InspectionDoc,
   InspectionItemDoc,
   InspectionStatus,
+  SupplyRequestDoc,
+  SupplyStatus,
 } from "@/lib/types";
 
 const FEED_KEY = "chsh_local_inspections";
 const ITEMS_KEY = "chsh_local_items";
 const COMMENTS_KEY = "chsh_local_comments";
+const SUPPLY_KEY = "chsh_local_supply";
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -99,4 +102,30 @@ export function getLocalCommentsByClass(classId: string): CommentDoc[] {
   return readJson<CommentDoc[]>(COMMENTS_KEY, [])
     .filter((c) => c.class_id && aliases.has(c.class_id))
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
+}
+
+export function saveLocalSupplyRequest(row: SupplyRequestDoc) {
+  const list = readJson<SupplyRequestDoc[]>(SUPPLY_KEY, []);
+  writeJson(SUPPLY_KEY, [
+    row,
+    ...list.filter((i) => i.request_id !== row.request_id),
+  ]);
+}
+
+export function getLocalSupplyRequests(): SupplyRequestDoc[] {
+  return readJson<SupplyRequestDoc[]>(SUPPLY_KEY, []).sort((a, b) =>
+    b.created_at.localeCompare(a.created_at),
+  );
+}
+
+export function updateLocalSupplyStatus(requestId: string, status: SupplyStatus) {
+  const list = getLocalSupplyRequests();
+  writeJson(
+    SUPPLY_KEY,
+    list.map((row) =>
+      row.request_id === requestId
+        ? { ...row, status, updated_at: new Date().toISOString() }
+        : row,
+    ),
+  );
 }
