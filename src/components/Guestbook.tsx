@@ -16,6 +16,7 @@ import {
 } from "@/lib/local/store";
 import { enqueueJob } from "@/lib/offline/queue";
 import { pushStaffNotify } from "@/lib/notify/staff-push";
+import { rememberClassFromReport } from "@/lib/class-pin/remember";
 import { isNetworkError, uploadFixPhoto } from "@/lib/r2/fix-upload";
 import type { CommentDoc, InspectionDoc } from "@/lib/types";
 
@@ -141,6 +142,7 @@ export function Guestbook({
           createdAt: new Date().toISOString(),
           attempts: 0,
         });
+        rememberClassFromReport({ classId });
         setPhotoQueue([]);
         setMessage(`目前離線，已暫存 ${list.length} 張。連上網後會自動送出。`);
         return;
@@ -183,6 +185,7 @@ export function Guestbook({
 
       setComments((prev) => [...savedList, ...prev]);
       invalidateCache(`class:${classId}`);
+      rememberClassFromReport({ classId });
       pushStaffNotify({
         type: "fix",
         classId,

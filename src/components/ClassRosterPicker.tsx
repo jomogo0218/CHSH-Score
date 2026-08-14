@@ -17,7 +17,7 @@ type Props = {
 };
 
 /**
- * 全校名冊選班：國中／高中分年段，手機與電腦皆完整顯示（不裁切）。
+ * 全校名冊選班：國中／高中分年段，顯示導師姓名。
  */
 export function ClassRosterPicker({
   selectedId,
@@ -38,21 +38,34 @@ export function ClassRosterPicker({
                 （{classes.length}）
               </span>
             </p>
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {classes.map((c) => {
                 const selected = c.class_id === selectedId;
                 return (
                   <Link
                     key={c.class_id}
                     href={hrefOf(c.class_id)}
-                    title={c.class_name}
-                    aria-label={c.class_name}
+                    title={`${c.class_name}｜導師 ${c.homeroom_teacher || "—"}`}
+                    aria-label={`${c.class_name}，導師 ${c.homeroom_teacher || "未設定"}`}
                     aria-current={selected ? "page" : undefined}
-                    className={`btn-block btn-chip w-full text-center font-medium ${
+                    className={`btn-block btn-chip flex min-h-[3.25rem] w-full flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center ${
                       selected ? "btn-primary" : ""
                     }`}
                   >
-                    {chipLabel(c.class_name, grade)}
+                    <span
+                      className={`font-[family-name:var(--font-noto)] text-sm font-bold leading-tight tracking-normal subpixel-antialiased [text-rendering:optimizeLegibility] ${
+                        selected ? "text-white" : "text-ink"
+                      }`}
+                    >
+                      {chipLabel(c.class_name, grade)}
+                    </span>
+                    <span
+                      className={`font-[family-name:var(--font-noto)] text-[13px] font-semibold leading-snug tracking-normal subpixel-antialiased [text-rendering:optimizeLegibility] ${
+                        selected ? "text-white" : "text-ink"
+                      }`}
+                    >
+                      {c.homeroom_teacher || "—"}
+                    </span>
                   </Link>
                 );
               })}

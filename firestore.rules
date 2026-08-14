@@ -143,5 +143,34 @@ service cloud.firestore {
                 .hasOnly(['display_name']));
       allow delete: if isAdmin();
     }
+
+    match /menus/{menuId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    function isGuestLunchReport() {
+      return request.resource.data.kind in ['feedback', 'portion', 'leftover', 'safety']
+        && request.resource.data.class_id is string
+        && request.resource.data.class_id.size() <= 32
+        && request.resource.data.class_name is string
+        && request.resource.data.class_name.size() > 0
+        && request.resource.data.class_name.size() <= 40
+        && request.resource.data.status == 'pending'
+        && request.resource.data.created_at is string
+        && request.resource.data.source is string
+        && request.resource.data.keys().hasAll([
+          'kind', 'class_id', 'class_name', 'status', 'source', 'created_at'
+        ]);
+    }
+
+    match /lunch_reports/{reportId} {
+      allow read: if true;
+      allow create: if isGuestLunchReport();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'updated_at']);
+      allow delete: if isAdmin();
+    }
   }
 }

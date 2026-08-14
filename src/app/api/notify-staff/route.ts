@@ -26,12 +26,14 @@ type NotifyType =
   | "supply_rejected"
   | "fixed"
   | "digest"
-  | "inspect_reminder";
+  | "inspect_reminder"
+  | "lunch";
 
 type Body = {
   test?: boolean | string;
   type?: NotifyType;
   classId?: string;
+  className?: string;
   itemId?: string;
   itemLabel?: string;
   quantity?: number;
@@ -44,6 +46,8 @@ type Body = {
   summary?: string;
   deadlineLabel?: string;
   date?: string;
+  kind?: string;
+  dish?: string;
 };
 
 function validClass(id: string) {
@@ -221,6 +225,51 @@ export async function POST(request: NextRequest) {
         await deliver({
           staffText: text,
           extra: { type: "inspect_reminder" },
+        }),
+      );
+    }
+
+    if (type === "lunch") {
+      const kindRaw = String(body.kind ?? "feedback");
+      const kindLabel =
+        kindRaw === "portion"
+          ? "份量"
+          : kindRaw === "leftover"
+            ? "剩食"
+            : kindRaw === "safety"
+              ? "食安"
+              : "口味";
+      const classIdRaw = String(body.classId ?? "").trim();
+      const className =
+        String(body.className ?? "").trim() ||
+        (validClass(classIdRaw) ? displayClassName(classIdRaw) : "未填班級");
+      const dish = String(body.dish ?? "").trim().slice(0, 80);
+      const note =
+        String(body.note ?? "").trim().slice(0, 200) || "導師午餐回報";
+      const photoUrls = photoUrlList(body.photoUrls);
+      const inbox = `${SITE_ORIGIN}/lunch/inbox`;
+      const staffText = [
+        `【嘉華午餐｜${kindLabel}】${className}`,
+        dish ? `菜色：${dish}` : null,
+        note,
+        photoUrls.length ? `${photoUrls.length} 張佐證` : null,
+        inbox,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      return NextResponse.json(
+        await deliver({
+          staffText,
+          photoUrls,
+          extra: {
+            type: "lunch_report",
+            classId: classIdRaw,
+            className,
+            kind: kindRaw,
+            dish,
+            note,
+            photoUrls,
+          },
         }),
       );
     }

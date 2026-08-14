@@ -112,52 +112,6 @@ export function HallFeed({
   );
 }
 
-export function TopBoard({
-  inspections,
-  highlightClassId,
-}: {
-  inspections: InspectionDoc[];
-  highlightClassId?: string | null;
-}) {
-  return (
-    <section className="panel animate-rise overflow-hidden">
-      <div className="bg-mint px-3 py-2 text-white sm:px-4">
-        <h2 className="font-[family-name:var(--font-display)] text-base font-bold">
-          今日優良
-        </h2>
-        <p className="text-[11px] text-white/80">缺失最少的班 · 點班名可進班級頁</p>
-      </div>
-      <ol className="grid grid-cols-3 divide-x divide-line/40">
-        {inspections.map((item, index) => {
-          const mine = mineClass(item.class_id, highlightClassId);
-          return (
-            <li key={item.inspection_id} className="p-2.5 sm:p-3">
-              <Link
-                href={classHref(item.class_id)}
-                className={`block space-y-1 rounded-md p-1 ${
-                  deficiencyCountOf(item) > 0 ? "alert-box" : ""
-                } ${mine ? "mine-box" : ""}`}
-              >
-                <p className="text-[11px] text-muted">
-                  #{index + 1}
-                  {mine ? " · 本班" : ""}
-                </p>
-                <p className="truncate text-sm font-semibold text-ink">
-                  {displayClassName(item.class_id)}
-                </p>
-                <p className="font-[family-name:var(--font-display)] text-xl font-bold text-mint sm:text-2xl">
-                  {deficiencyCountOf(item)}
-                </p>
-                <p className="text-[11px] text-muted">缺失</p>
-              </Link>
-            </li>
-          );
-        })}
-      </ol>
-    </section>
-  );
-}
-
 export function RankBoard({
   title,
   hint,

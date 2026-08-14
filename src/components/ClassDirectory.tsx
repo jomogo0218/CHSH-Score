@@ -24,7 +24,10 @@ export function ClassDirectory({
         班級名冊
       </h2>
       <p className="mt-0.5 text-xs text-muted">
-        共 {classes.length} 班 · 上面沒看到自己班時，從這裡點進去
+        共 {classes.length} 班 · 顯示導師姓名
+        {highlightClassId
+          ? " · 本班已標示"
+          : " · 上方可先記住本班"}
       </p>
       <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {GRADE_ORDER.map((grade) => {
@@ -38,20 +41,33 @@ export function ClassDirectory({
                 {GRADE_LABELS[grade]}
                 <span className="ml-1 font-normal">（{list.length}）</span>
               </h3>
-              <div className="grid grid-cols-6 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {list.map((c) => {
                   const mine = sameClass(c.class_id, highlightClassId);
                   return (
                     <Link
                       key={c.class_id}
                       href={`/classes/${c.class_id}`}
-                      title={c.class_name}
-                      aria-label={c.class_name}
-                      className={`btn-block btn-chip w-full text-center font-medium ${
+                      title={`${c.class_name}｜導師 ${c.homeroom_teacher || "—"}`}
+                      aria-label={`${c.class_name}，導師 ${c.homeroom_teacher || "未設定"}`}
+                      className={`btn-block btn-chip flex min-h-[3.25rem] w-full flex-col items-center justify-center gap-0.5 px-1.5 py-2 text-center ${
                         mine ? "btn-primary mine-box" : ""
                       }`}
                     >
-                      {chipLabel(c.class_name, grade)}
+                      <span
+                        className={`font-[family-name:var(--font-noto)] text-sm font-bold leading-tight tracking-normal subpixel-antialiased [text-rendering:optimizeLegibility] ${
+                          mine ? "text-white" : "text-ink"
+                        }`}
+                      >
+                        {chipLabel(c.class_name, grade)}
+                      </span>
+                      <span
+                        className={`font-[family-name:var(--font-noto)] text-[13px] font-semibold leading-snug tracking-normal subpixel-antialiased [text-rendering:optimizeLegibility] ${
+                          mine ? "text-white" : "text-ink"
+                        }`}
+                      >
+                        {c.homeroom_teacher || "—"}
+                      </span>
                     </Link>
                   );
                 })}

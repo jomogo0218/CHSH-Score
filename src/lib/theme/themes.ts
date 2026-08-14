@@ -15,6 +15,8 @@ export const THEME_IDS = [
 export type ThemeId = (typeof THEME_IDS)[number];
 
 export const THEME_STORAGE_KEY = "chsh-theme";
+/** 未選過風格時的預設：畫報 */
+export const DEFAULT_THEME_ID: ThemeId = "atelier";
 
 export const THEMES: ReadonlyArray<{
   id: ThemeId;
@@ -22,12 +24,12 @@ export const THEMES: ReadonlyArray<{
   swatch: string;
   themeColor: string;
 }> = [
+  { id: "atelier", label: "畫報", swatch: "#3a7a62", themeColor: "#2f5d4c" },
   { id: "campus", label: "校園綠", swatch: "#2a6b58", themeColor: "#2a6b58" },
   { id: "ink", label: "墨筆", swatch: "#2c4a3e", themeColor: "#2c4a3e" },
   { id: "sun", label: "暖陽", swatch: "#c46a2d", themeColor: "#c46a2d" },
   { id: "night", label: "夜間", swatch: "#5ec2a0", themeColor: "#1c232c" },
   { id: "sky", label: "天藍", swatch: "#2b6ea8", themeColor: "#2b6ea8" },
-  { id: "atelier", label: "畫報", swatch: "#3a7a62", themeColor: "#2f5d4c" },
   { id: "plum", label: "梅紫", swatch: "#7b3fa0", themeColor: "#7b3fa0" },
   { id: "sakura", label: "櫻粉", swatch: "#d46a8a", themeColor: "#d46a8a" },
   { id: "abyss", label: "深海", swatch: "#3ec8e0", themeColor: "#121c28" },
@@ -61,5 +63,5 @@ const THEME_COLORS: Record<ThemeId, string> = {
   cocoa: "#6b4226",
 };
 
-/** 進頁面前套用，避免閃一下預設綠 */
-export const THEME_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem("${THEME_STORAGE_KEY}");var ok=${JSON.stringify(THEME_IDS)};if(!t||ok.indexOf(t)<0)return;document.documentElement.setAttribute("data-theme",t);var c=${JSON.stringify(THEME_COLORS)}[t];var m=document.querySelector('meta[name="theme-color"]');if(m&&c)m.setAttribute("content",c)}catch(e){}})();`;
+/** 進頁面前套用；無紀錄時預設畫報，避免閃一下校園綠 */
+export const THEME_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem("${THEME_STORAGE_KEY}");var ok=${JSON.stringify(THEME_IDS)};var id=(t&&ok.indexOf(t)>=0)?t:"${DEFAULT_THEME_ID}";document.documentElement.setAttribute("data-theme",id);var c=${JSON.stringify(THEME_COLORS)}[id];var m=document.querySelector('meta[name="theme-color"]');if(m&&c)m.setAttribute("content",c)}catch(e){}})();`;

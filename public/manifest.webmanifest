@@ -4,8 +4,8 @@
   "description": "嘉華體衛組環境評分：巡察佐證、改善回報、評分輔助",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#e8f0eb",
-  "theme_color": "#2a6b58",
+  "background_color": "#efe6d4",
+  "theme_color": "#2f5d4c",
   "lang": "zh-Hant",
   "icons": [
     {

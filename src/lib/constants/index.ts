@@ -3,10 +3,14 @@ import type { InspectionStatus, UserRole } from "@/lib/types";
 export const SITE_NAME = "嘉華體衛組環境評分";
 export const SITE_SHORT_NAME = "環境評分";
 export const SITE_TAGLINE = "巡察佐證 · 改善回報 · 評分輔助";
-export const TEACHER_ZONE_LABEL = "導師區";
+export const TEACHER_ZONE_LABEL = "環境";
 export const TEACHER_ZONE_TAGLINE =
   "看自己班有沒有缺失（紅框呼吸燈）。可記住本班，點進去即可拍照回報改善。";
 export const SITE_ORIGIN = "https://chsh-score.vercel.app";
+
+/** 站內午餐佈告 */
+export const LUNCH_LABEL = "午餐";
+export const LUNCH_INBOX_PATH = "/lunch/inbox";
 
 /** 高中班級德目（忠孝仁愛信） */
 const SENIOR_STREAMS = [
@@ -21,43 +25,75 @@ type RosterEntry = {
   class_id: string;
   grade: number;
   class_name: string;
+  homeroom_teacher: string;
 };
 
 function juniorClasses(
   grade: number,
   label: string,
-  count: number,
+  teachers: readonly string[],
 ): RosterEntry[] {
-  return Array.from({ length: count }, (_, i) => {
+  return teachers.map((teacher, i) => {
     const n = i + 1;
     return {
       class_id: `j${grade}${String(n).padStart(2, "0")}`,
       grade,
       class_name: `${label}${n}班`,
+      homeroom_teacher: teacher,
     };
   });
 }
 
-function seniorClasses(grade: number, label: string): RosterEntry[] {
+function seniorClasses(
+  grade: number,
+  label: string,
+  teachers: Readonly<Record<(typeof SENIOR_STREAMS)[number]["id"], string>>,
+): RosterEntry[] {
   return SENIOR_STREAMS.map((s) => ({
     class_id: `s${grade}${s.id}`,
     grade,
     class_name: `${label}${s.name}`,
+    homeroom_teacher: teachers[s.id],
   }));
 }
 
 /**
- * 嘉華班級名冊
+ * 嘉華班級名冊（含導師）
  * 國一 1～5、國二 1～6、國三 1～5；高一～高三：忠孝仁愛信
  * grade：1=國一 … 3=國三，4=高一 … 6=高三
  */
 export const CLASS_ROSTER: ReadonlyArray<RosterEntry> = [
-  ...juniorClasses(1, "國一", 5),
-  ...juniorClasses(2, "國二", 6),
-  ...juniorClasses(3, "國三", 5),
-  ...seniorClasses(4, "高一"),
-  ...seniorClasses(5, "高二"),
-  ...seniorClasses(6, "高三"),
+  ...juniorClasses(1, "國一", ["黃佩綾", "姚譯婷", "彭舒渝", "葉峰銘", "崔茗喬"]),
+  ...juniorClasses(2, "國二", [
+    "王富寬",
+    "陳勝璿",
+    "鄧靜蓓",
+    "許儷瓊",
+    "劉芳貞",
+    "王珊美",
+  ]),
+  ...juniorClasses(3, "國三", ["何月娥", "劉娜均", "王倫筑", "余姿瑩", "李映柔"]),
+  ...seniorClasses(4, "高一", {
+    zhong: "蔡孟儒",
+    xiao: "張淑枝",
+    ren: "周佩蓉",
+    ai: "張振宇",
+    xin: "黃崧浩",
+  }),
+  ...seniorClasses(5, "高二", {
+    zhong: "張君楷",
+    xiao: "陳國棟",
+    ren: "鄭世杰",
+    ai: "蔡孟儒",
+    xin: "黃宇正",
+  }),
+  ...seniorClasses(6, "高三", {
+    zhong: "黃子信",
+    xiao: "黃文良",
+    ren: "袁鳳笙",
+    ai: "鍾慧容",
+    xin: "陳耀祖",
+  }),
 ];
 
 export const GRADE_ORDER = [1, 2, 3, 4, 5, 6] as const;

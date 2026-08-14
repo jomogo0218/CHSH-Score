@@ -27,6 +27,11 @@ import type {
   InspectionDoc,
   InspectionItemDoc,
   InspectionStatus,
+  LunchMealType,
+  LunchMenuDoc,
+  LunchReportDoc,
+  LunchReportKind,
+  LunchReportStatus,
   SupplyRequestDoc,
   SupplyStatus,
   UserDoc,
@@ -540,6 +545,137 @@ export async function updateSupplyRequestStatus(
 ): Promise<void> {
   const db = requireDb();
   await updateDoc(doc(db, "supply_requests", requestId), {
+    status,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+const LUNCH_MENUS_LIMIT = 90;
+const LUNCH_REPORTS_LIMIT = 80;
+
+function mapLunchMenu(id: string, data: DocumentData): LunchMenuDoc {
+  return {
+    menu_id: id,
+    date: String(data.date ?? ""),
+    type: (data.type === "Dinner" ? "Dinner" : "Lunch") as LunchMealType,
+    dishes: Array.isArray(data.dishes)
+      ? data.dishes.map((d: unknown) => String(d))
+      : [],
+    nutrition: data.nutrition,
+  };
+}
+
+function mapLunchReport(id: string, data: DocumentData): LunchReportDoc {
+  return {
+    report_id: id,
+    ...(data as Omit<LunchReportDoc, "report_id">),
+  };
+}
+
+export function subscribeLunchMenus(
+  handler: (rows: LunchMenuDoc[]) => void,
+  max = LUNCH_MENUS_LIMIT,
+): Unsubscribe {
+  const db = requireDb();
+  const q = query(
+    collection(db, "menus"),
+    orderBy("date", "desc"),
+    limit(max),
+  );
+  return onSnapshot(
+    q,
+    (snap) => handler(snap.docs.map((d) => mapLunchMenu(d.id, d.data()))),
+    () => handler([]),
+  );
+}
+
+export async function upsertLunchMenu(input: {
+  date: string;
+  type?: LunchMealType;
+  dishes: string[];
+  nutrition?: LunchMenuDoc["nutrition"];
+}): Promise<LunchMenuDoc> {
+  const db = requireDb();
+  const date = input.date.trim();
+  const dishes = input.dishes.map((d) => d.trim()).filter(Boolean);
+  const type = input.type ?? "Lunch";
+  const id = `${date.replace(/[/.\s]+/g, "_")}_${type}`;
+  const payload = {
+    date,
+    type,
+    dishes,
+    ...(input.nutrition ? { nutrition: input.nutrition } : {}),
+  };
+  await setDoc(doc(db, "menus", id), payload, { merge: true });
+  return { menu_id: id, ...payload };
+}
+
+export async function createLunchReport(input: {
+  kind: LunchReportKind;
+  classId?: string;
+  className: string;
+  dish?: string | null;
+  dishes?: string[];
+  rating?: number;
+  portion?: "too_little" | "ok" | "too_much";
+  leftover?: string;
+  reason?: string;
+  comment?: string;
+  cleaning?: boolean;
+  photoUrls?: string[];
+  menuDate?: string;
+}): Promise<LunchReportDoc> {
+  const db = requireDb();
+  const createdAt = new Date().toISOString();
+  const payload = {
+    kind: input.kind,
+    class_id: (input.classId ?? "").trim().slice(0, 32),
+    class_name: input.className.trim().slice(0, 40) || "未填班級",
+    dish: (input.dish ?? "").trim().slice(0, 80) || undefined,
+    dishes: (input.dishes ?? []).map((d) => d.trim()).filter(Boolean).slice(0, 12),
+    rating: input.rating,
+    portion: input.portion,
+    leftover: input.leftover,
+    reason: (input.reason ?? "").trim().slice(0, 200) || undefined,
+    comment: (input.comment ?? "").trim().slice(0, 400) || undefined,
+    cleaning: input.cleaning,
+    photo_urls: (input.photoUrls ?? []).slice(0, 6),
+    menu_date: input.menuDate,
+    status: "pending" as const,
+    source: "score-lunch",
+    created_at: createdAt,
+  };
+  // Firestore 不接受 undefined 欄位
+  const clean = Object.fromEntries(
+    Object.entries(payload).filter(([, v]) => v !== undefined),
+  );
+  const ref = await addDoc(collection(db, "lunch_reports"), clean);
+  return { report_id: ref.id, ...(clean as Omit<LunchReportDoc, "report_id">) };
+}
+
+export function subscribeLunchReports(
+  handler: (rows: LunchReportDoc[]) => void,
+  max = LUNCH_REPORTS_LIMIT,
+): Unsubscribe {
+  const db = requireDb();
+  const q = query(
+    collection(db, "lunch_reports"),
+    orderBy("created_at", "desc"),
+    limit(max),
+  );
+  return onSnapshot(
+    q,
+    (snap) => handler(snap.docs.map((d) => mapLunchReport(d.id, d.data()))),
+    () => handler([]),
+  );
+}
+
+export async function updateLunchReportStatus(
+  reportId: string,
+  status: LunchReportStatus,
+): Promise<void> {
+  const db = requireDb();
+  await updateDoc(doc(db, "lunch_reports", reportId), {
     status,
     updated_at: new Date().toISOString(),
   });

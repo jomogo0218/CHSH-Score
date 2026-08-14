@@ -1,6 +1,7 @@
 import { postComment } from "@/lib/firebase/firestore";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { pushStaffNotify } from "@/lib/notify/staff-push";
+import { rememberClassFromReport } from "@/lib/class-pin/remember";
 import { uploadInspectionPhoto } from "@/lib/r2/upload";
 import { uploadFixPhoto } from "@/lib/r2/fix-upload";
 import { saveLocalComment } from "@/lib/local/store";
@@ -146,6 +147,7 @@ async function flushInspectPhoto(job: InspectPhotoJob) {
 async function flushFixReport(job: FixReportJob) {
   const note = job.content.trim() || "已打掃完成，請複查。";
   const name = job.authorName.trim() || "導師";
+  rememberClassFromReport({ classId: job.classId });
   const photoUrls: string[] = [];
   for (let i = 0; i < job.photos.length; i++) {
     const photo = job.photos[i];

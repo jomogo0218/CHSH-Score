@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { M_PLUS_Rounded_1c, Noto_Sans_TC } from "next/font/google";
 import { ClassAlertListener } from "@/components/ClassAlertListener";
 import { StaffAlertListener } from "@/components/StaffAlertListener";
+import { LunchPendingListener } from "@/components/LunchPendingListener";
+import { ScreenDeficiencyGlow } from "@/components/ScreenDeficiencyGlow";
 import { ClickSound } from "@/components/ClickSound";
 import { OfflineSync } from "@/components/OfflineSync";
 import { PwaRegister } from "@/components/PwaRegister";
@@ -23,6 +24,8 @@ const body = Noto_Sans_TC({
   subsets: ["latin"],
   variable: "--font-noto",
   display: "swap",
+  preload: true,
+  adjustFontFallback: true,
 });
 
 export const metadata: Metadata = {
@@ -45,7 +48,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2a6b58",
+  themeColor: "#2f5d4c",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -59,17 +62,24 @@ export default function RootLayout({
   return (
     <html
       lang="zh-Hant"
+      data-theme="atelier"
       suppressHydrationWarning
       className={`${display.variable} ${body.variable} h-full`}
     >
+      <head>
+        {/* 進頁前套用風格；勿用 next/script children（React 19 會警告且客戶端不執行） */}
+        <script
+          id="chsh-theme"
+          dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }}
+        />
+      </head>
       <body className="min-h-full antialiased">
-        <Script id="chsh-theme" strategy="beforeInteractive">
-          {THEME_BOOT_SCRIPT}
-        </Script>
         <PwaRegister />
         <ClickSound />
         <ClassAlertListener />
         <StaffAlertListener />
+        <LunchPendingListener />
+        <ScreenDeficiencyGlow />
         <SiteHeader />
         <OfflineSync />
         <main className="site-shell py-3 sm:py-5">{children}</main>

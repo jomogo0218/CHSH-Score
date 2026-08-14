@@ -1,0 +1,547 @@
+[
+  {
+    "date": "115/8/1",
+    "date_iso": "2026-08-01",
+    "weekday": "六",
+    "type": "Lunch",
+    "dishes": [
+      "洋芋滷雞",
+      "紅豆麻糬",
+      "關東煮",
+      "紅蘿蔔炒蛋",
+      "炒青菜",
+      "紫菜蛋花湯"
+    ],
+    "nutrition": {
+      "calories": 810.1,
+      "protein": 28.8
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/3",
+    "date_iso": "2026-08-03",
+    "weekday": "一",
+    "type": "Lunch",
+    "dishes": [
+      "香菇肉燥",
+      "糯米捲",
+      "速炒玉米粒",
+      "絲瓜麵線",
+      "炒青菜",
+      "豬血湯"
+    ],
+    "nutrition": {
+      "calories": 768.3,
+      "protein": 27.1
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/4",
+    "date_iso": "2026-08-04",
+    "weekday": "二",
+    "type": "Lunch",
+    "dishes": [
+      "回鍋肉片",
+      "薯條",
+      "蒸蛋",
+      "炒時蔬",
+      "炒青菜",
+      "芋頭西米露"
+    ],
+    "nutrition": {
+      "calories": 823.5,
+      "protein": 28.1
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/5",
+    "date_iso": "2026-08-05",
+    "weekday": "三",
+    "type": "Lunch",
+    "dishes": [
+      "香菇雞丁",
+      "紅豆麻糬",
+      "翠綠杏鮑菇",
+      "燴冬瓜",
+      "炒青菜",
+      "結頭菜湯"
+    ],
+    "nutrition": {
+      "calories": 800.0,
+      "protein": 27.5
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/6",
+    "date_iso": "2026-08-06",
+    "weekday": "四",
+    "type": "Lunch",
+    "dishes": [
+      "茄汁雞",
+      "魷魚丸",
+      "速炒小瓜",
+      "銀芽雙色",
+      "炒青菜",
+      "香菇雞湯"
+    ],
+    "nutrition": {
+      "calories": 779.1,
+      "protein": 28.7
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/7",
+    "date_iso": "2026-08-07",
+    "weekday": "五",
+    "type": "Lunch",
+    "dishes": [
+      "宮保雞丁",
+      "花枝丸",
+      "鮮奶饅頭",
+      "爆炒黑輪",
+      "炒青菜",
+      "酸辣湯"
+    ],
+    "nutrition": {
+      "calories": 780.8,
+      "protein": 29.4
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/8",
+    "date_iso": "2026-08-08",
+    "weekday": "六",
+    "type": "Lunch",
+    "dishes": [
+      "麻油雞",
+      "紅蘿蔔炒蛋",
+      "鐵板豆腐",
+      "炒時蔬",
+      "炒青菜",
+      "鄉下濃湯"
+    ],
+    "nutrition": {
+      "calories": 766.2,
+      "protein": 29.0
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/10",
+    "date_iso": "2026-08-10",
+    "weekday": "一",
+    "type": "Lunch",
+    "dishes": [
+      "豆干丁肉燥",
+      "山藥捲",
+      "麻婆豆腐",
+      "爆炒花菜",
+      "炒青菜",
+      "蘿蔔湯"
+    ],
+    "nutrition": {
+      "calories": 822.4,
+      "protein": 26.7
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/11",
+    "date_iso": "2026-08-11",
+    "weekday": "二",
+    "type": "Lunch",
+    "dishes": [
+      "肉羹飯",
+      "日式蒸蛋",
+      "關東煮",
+      "開陽白菜",
+      "炒青菜",
+      "金瓜湯"
+    ],
+    "nutrition": {
+      "calories": 775.9,
+      "protein": 27.8
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/12",
+    "date_iso": "2026-08-12",
+    "weekday": "三",
+    "type": "Lunch",
+    "dishes": [
+      "香菇雞",
+      "魚板蒸蛋",
+      "鮮奶饅頭",
+      "紅蘿蔔肉末",
+      "炒青菜",
+      "仙草蜜"
+    ],
+    "nutrition": {
+      "calories": 764.9,
+      "protein": 28.9
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/13",
+    "date_iso": "2026-08-13",
+    "weekday": "四",
+    "type": "Lunch",
+    "dishes": [
+      "賞鮮雞排",
+      "蒸蛋",
+      "酸菜豬血",
+      "麵筋",
+      "炒青菜",
+      "酸辣湯"
+    ],
+    "nutrition": {
+      "calories": 795.5,
+      "protein": 29.5
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/14",
+    "date_iso": "2026-08-14",
+    "weekday": "五",
+    "type": "Lunch",
+    "dishes": [
+      "梅干扣肉",
+      "芝麻球",
+      "碎脯蛋",
+      "三色炒蛋",
+      "炒青菜",
+      "蘿蔔湯"
+    ],
+    "nutrition": {
+      "calories": 786.3,
+      "protein": 27.6
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/15",
+    "date_iso": "2026-08-15",
+    "weekday": "六",
+    "type": "Lunch",
+    "dishes": [
+      "馬蹄條",
+      "東港蝦餅",
+      "絲瓜麵線",
+      "翠綠黑輪",
+      "炒青菜",
+      "玉米穗湯"
+    ],
+    "nutrition": {
+      "calories": 789.7,
+      "protein": 27.1
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/17",
+    "date_iso": "2026-08-17",
+    "weekday": "一",
+    "type": "Lunch",
+    "dishes": [
+      "台式炒麵",
+      "香雞堡",
+      "速炒小瓜",
+      "炒時蔬",
+      "炒青菜",
+      "綠豆湯"
+    ],
+    "nutrition": {
+      "calories": 813.9,
+      "protein": 29.4
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/18",
+    "date_iso": "2026-08-18",
+    "weekday": "二",
+    "type": "Lunch",
+    "dishes": [
+      "茄汁雞丁",
+      "香酥甜不辣",
+      "豆皮高麗",
+      "麻婆豆腐",
+      "炒青菜",
+      "榨菜肉絲湯"
+    ],
+    "nutrition": {
+      "calories": 810.4,
+      "protein": 28.6
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/19",
+    "date_iso": "2026-08-19",
+    "weekday": "三",
+    "type": "Lunch",
+    "dishes": [
+      "滷雞腿",
+      "山藥捲",
+      "紅燒麵腸",
+      "五更常旺",
+      "炒青菜",
+      "海芽湯"
+    ],
+    "nutrition": {
+      "calories": 778.6,
+      "protein": 29.2
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/20",
+    "date_iso": "2026-08-20",
+    "weekday": "四",
+    "type": "Lunch",
+    "dishes": [
+      "回鍋肉片",
+      "黃金雞堡",
+      "沙茶金針菇",
+      "爆炒青花菜",
+      "炒青菜",
+      "蘿蔔湯"
+    ],
+    "nutrition": {
+      "calories": 790.5,
+      "protein": 27.7
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/21",
+    "date_iso": "2026-08-21",
+    "weekday": "五",
+    "type": "Lunch",
+    "dishes": [
+      "茄汁義大利麵",
+      "蝦仁捲",
+      "燴芥菜包",
+      "翠綠黑輪",
+      "炒青菜",
+      "貢丸片湯"
+    ],
+    "nutrition": {
+      "calories": 794.7,
+      "protein": 26.4
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/22",
+    "date_iso": "2026-08-22",
+    "weekday": "六",
+    "type": "Lunch",
+    "dishes": [
+      "花瓜滷雞塊",
+      "黃金球",
+      "醬燒海茸",
+      "滷筍干",
+      "炒青菜",
+      "香菇雞湯"
+    ],
+    "nutrition": {
+      "calories": 800.8,
+      "protein": 26.1
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/24",
+    "date_iso": "2026-08-24",
+    "weekday": "一",
+    "type": "Lunch",
+    "dishes": [
+      "滷雞腿",
+      "薯條",
+      "蒸蛋",
+      "絲瓜麵線",
+      "炒青菜",
+      "榨菜肉絲湯"
+    ],
+    "nutrition": {
+      "calories": 825.8,
+      "protein": 25.9
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/25",
+    "date_iso": "2026-08-25",
+    "weekday": "二",
+    "type": "Lunch",
+    "dishes": [
+      "香菇雞丁",
+      "鹹酥甜不辣",
+      "滷海結",
+      "燒賣",
+      "炒青菜",
+      "鄉下濃湯"
+    ],
+    "nutrition": {
+      "calories": 773.4,
+      "protein": 28.6
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/26",
+    "date_iso": "2026-08-26",
+    "weekday": "三",
+    "type": "Lunch",
+    "dishes": [
+      "洋蔥雞丁",
+      "黃金雞堡",
+      "筍絲粳",
+      "速炒玉米粒",
+      "炒青菜",
+      "四神湯"
+    ],
+    "nutrition": {
+      "calories": 813.9,
+      "protein": 28.6
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/27",
+    "date_iso": "2026-08-27",
+    "weekday": "四",
+    "type": "Lunch",
+    "dishes": [
+      "古早味肉燥",
+      "米血",
+      "黑胡椒豆芽",
+      "冬瓜湯",
+      "炒青菜",
+      "紅豆紫米湯"
+    ],
+    "nutrition": {
+      "calories": 818.0,
+      "protein": 28.6
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/28",
+    "date_iso": "2026-08-28",
+    "weekday": "五",
+    "type": "Lunch",
+    "dishes": [
+      "黑糊椒豬柳",
+      "薯條",
+      "麻婆豆腐",
+      "炒青菜",
+      "紅豆湯"
+    ],
+    "nutrition": {
+      "calories": 793.6,
+      "protein": 28.3
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/29",
+    "date_iso": "2026-08-29",
+    "weekday": "六",
+    "type": "Lunch",
+    "dishes": [
+      "白醬義大利麵",
+      "黃金雞堡",
+      "紅燒百頁",
+      "開陽白菜",
+      "炒青菜",
+      "酸辣湯"
+    ],
+    "nutrition": {
+      "calories": 771.9,
+      "protein": 27.4
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  },
+  {
+    "date": "115/8/31",
+    "date_iso": "2026-08-31",
+    "weekday": "一",
+    "type": "Lunch",
+    "dishes": [
+      "咖哩肉丁",
+      "蝦仁捲",
+      "紅蘿蔔肉末",
+      "白菜羹",
+      "炒青菜",
+      "紅豆紫米湯"
+    ],
+    "nutrition": {
+      "calories": 806.0,
+      "protein": 27.7
+    },
+    "simulated": true,
+    "note": "115年八月假菜單（演示用，非正式核定）",
+    "month": "115/8"
+  }
+]

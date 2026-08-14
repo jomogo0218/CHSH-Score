@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  DEFAULT_THEME_ID,
   THEME_STORAGE_KEY,
   THEMES,
   applyTheme,
@@ -10,16 +11,15 @@ import {
 } from "@/lib/theme/themes";
 
 export function ThemeSwitcher() {
-  const [theme, setTheme] = useState<ThemeId>("campus");
+  const [theme, setTheme] = useState<ThemeId>(DEFAULT_THEME_ID);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    if (isThemeId(stored)) {
-      setTheme(stored);
-      applyTheme(stored);
-    }
+    const id = isThemeId(stored) ? stored : DEFAULT_THEME_ID;
+    setTheme(id);
+    applyTheme(id);
   }, []);
 
   useEffect(() => {

@@ -54,12 +54,12 @@ function bannerPhoto(name: string) {
 
 const teachers = ["王老師", "李老師", "陳老師", "林老師", "黃老師", "張老師"];
 
-/** 完整班級骨架 */
+/** 完整班級骨架（導師以 CLASS_ROSTER 為準） */
 export const allClasses: ClassDoc[] = CLASS_ROSTER.map((c, index) => ({
   class_id: c.class_id,
   grade: c.grade,
   class_name: c.class_name,
-  homeroom_teacher: teachers[index % teachers.length],
+  homeroom_teacher: c.homeroom_teacher || teachers[index % teachers.length],
   avatar_url: avatarPhoto(c.class_name),
   banner_url: bannerPhoto(c.class_name),
 }));

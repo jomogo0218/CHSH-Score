@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { ClassDirectory } from "@/components/ClassDirectory";
-import { HallFeed, RankBoard, TopBoard, WeeklyBoard } from "@/components/HallFeed";
+import { HallFeed, RankBoard, WeeklyBoard } from "@/components/HallFeed";
 import { MyClassCard } from "@/components/MyClassCard";
+import { RememberClassPanel } from "@/components/RememberClassPanel";
 import { SetupStatusBanner } from "@/components/SetupStatusBanner";
 import { FETCH_TTL_MS, setCached, withTtlCache } from "@/lib/cache/ttl";
 import { usePinnedClass } from "@/lib/class-pin/use-pinned-class";
@@ -16,12 +17,7 @@ import { getLocalInspections } from "@/lib/local/store";
 import { onInspectionUpdate } from "@/lib/live/inspection-events";
 import { useLiveFeedSubscription } from "@/lib/mqtt/useLiveFeed";
 import { TEACHER_ZONE_LABEL, TEACHER_ZONE_TAGLINE } from "@/lib/constants";
-import {
-  allClasses,
-  getDemoClass,
-  getLatestFeed,
-  getTodayTopClasses,
-} from "@/lib/seed/demo-data";
+import { allClasses, getDemoClass, getLatestFeed } from "@/lib/seed/demo-data";
 import {
   deficiencyCountOf,
   monthlyDeficiencyByClass,
@@ -29,7 +25,6 @@ import {
   weeklyDeficiencyByClass,
 } from "@/lib/scoring/deficiency";
 import {
-  taiwanDateString,
   taiwanMonthEnd,
   taiwanMonthStart,
   taiwanSemesterEnd,
@@ -141,22 +136,7 @@ export function HallClient() {
     };
   }, [semesterStart]);
 
-  const today = taiwanDateString();
   const openFeed = feed.filter((i) => i.status !== "fixed");
-  const top = [...openFeed]
-    .filter((i) => i.date === today)
-    .sort(
-      (a, b) =>
-        deficiencyCountOf(a) - deficiencyCountOf(b) ||
-        b.created_at.localeCompare(a.created_at),
-    )
-    .slice(0, 3);
-  const topBoard =
-    top.length > 0
-      ? top
-      : openFeed.length === 0
-        ? getTodayTopClasses(3).filter((i) => i.status !== "fixed")
-        : [];
   const weekRows = weeklyDeficiencyByClass(feed);
   const monthRows = monthlyDeficiencyByClass(feed);
   const semesterRows = semesterDeficiencyByClass(feed);
@@ -185,10 +165,9 @@ export function HallClient() {
 
       {pinnedClassId ? (
         <MyClassCard classId={pinnedClassId} inspections={feed} />
-      ) : null}
-      {topBoard.length > 0 ? (
-        <TopBoard inspections={topBoard} highlightClassId={pinnedClassId} />
-      ) : null}
+      ) : (
+        <RememberClassPanel />
+      )}
       {weekRows.length || monthRows.length || semesterRows.length ? (
         <details className="panel animate-rise p-3 sm:p-4">
           <summary className="cursor-pointer list-none font-[family-name:var(--font-display)] text-lg font-bold text-mint [&::-webkit-details-marker]:hidden">

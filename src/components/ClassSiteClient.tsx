@@ -268,6 +268,10 @@ export function ClassSiteClient({ classDoc }: { classDoc: ClassDoc }) {
         <Link href="/supply" className="text-mint underline">
           學務處領用
         </Link>
+        <span className="mx-1.5">·</span>
+        <Link href="/lunch" className="text-mint underline">
+          午餐
+        </Link>
       </p>
     </div>
   );

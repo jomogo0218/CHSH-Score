@@ -100,3 +100,43 @@ export interface LiveFeedPayload {
   inspection_id?: string;
   deficiency_count?: number;
 }
+
+/** 午餐菜單（民國年 date，如 115/8/14） */
+export type LunchMealType = "Lunch" | "Dinner";
+
+export interface LunchMenuDoc {
+  menu_id: string;
+  date: string;
+  type: LunchMealType;
+  dishes: string[];
+  nutrition?: {
+    calories?: number;
+    protein?: number;
+    fat?: number;
+    carbs?: number;
+  };
+}
+
+export type LunchReportKind = "feedback" | "portion" | "leftover" | "safety";
+export type LunchReportStatus = "pending" | "acked" | "closed";
+
+export interface LunchReportDoc {
+  report_id: string;
+  kind: LunchReportKind;
+  class_id: string;
+  class_name: string;
+  dish?: string;
+  dishes?: string[];
+  rating?: number;
+  portion?: "too_little" | "ok" | "too_much";
+  leftover?: string;
+  reason?: string;
+  comment?: string;
+  cleaning?: boolean;
+  photo_urls?: string[];
+  menu_date?: string;
+  status: LunchReportStatus;
+  source: string;
+  created_at: string;
+  updated_at?: string;
+}

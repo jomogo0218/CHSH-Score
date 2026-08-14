@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHero } from "@/components/PageHero";
 
 const RECYCLE_REMINDERS = [
   {
@@ -23,6 +24,7 @@ const RECYCLE_REMINDERS = [
 export function RecycleGuide() {
   return (
     <div className="space-y-4 sm:space-y-5">
+      <PageHero src="/themes/atelier/recycle.jpg" label="資源回收" />
       <header className="animate-rise space-y-1">
         <h1 className="font-[family-name:var(--font-display)] text-xl font-bold text-mint sm:text-2xl">
           資源回收分類提醒

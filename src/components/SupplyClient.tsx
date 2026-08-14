@@ -20,6 +20,7 @@ import {
   updateLocalSupplyStatus,
 } from "@/lib/local/store";
 import { emitSupplyUpdate, onSupplyUpdate } from "@/lib/live/supply-events";
+import { rememberClassFromReport } from "@/lib/class-pin/remember";
 import {
   enableStaffNotify,
   notifyTeacherSupplyReady,
@@ -33,6 +34,8 @@ import {
   supplyItemById,
 } from "@/lib/supply/catalog";
 import type { SupplyRequestDoc, SupplyStatus } from "@/lib/types";
+import { PageHero } from "@/components/PageHero";
+import { RememberClassPanel } from "@/components/RememberClassPanel";
 
 function mergeRows(remote: SupplyRequestDoc[], local: SupplyRequestDoc[]) {
   const map = new Map<string, SupplyRequestDoc>();
@@ -148,6 +151,7 @@ export function SupplyClient() {
         }
         saved.push(row);
         emitSupplyUpdate(row);
+        rememberClassFromReport({ classId: resolved });
         void fetch("/api/notify-staff", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -312,6 +316,8 @@ export function SupplyClient() {
 
   return (
     <div className="space-y-3 sm:space-y-4">
+      <PageHero src="/themes/atelier/supply.jpg" label="學務處領用" />
+      {!pinnedClassId ? <RememberClassPanel compact /> : null}
       <header className="animate-rise space-y-1">
         <h1 className="font-[family-name:var(--font-display)] text-xl font-bold text-mint sm:text-2xl">
           學務處領用申請
@@ -443,7 +449,7 @@ export function SupplyClient() {
             </a>
           </div>
           <p className="text-xs text-muted">
-            先按「綁定組長 Telegram」再按「測試」。導師不必綁定，用網頁看導師區即可。
+            先按「綁定組長 Telegram」再按「測試」。導師不必綁定，用網頁看「環境」即可。
           </p>
           {rows.length === 0 ? (
             <p className="text-sm text-muted">尚無申請。</p>
